@@ -1,0 +1,395 @@
+{
+  "surface": "report",
+  "manifest": {
+    "version": 1,
+    "surface": "report",
+    "title": "面向可测量层纹的单图自监督盲去噪与保真增强",
+    "description": "突出工程创新、验证证据和计量边界的技术报告。",
+    "generatedAt": "2026-09-05T07:40:59Z",
+    "cards": [
+      {
+        "id": "noise_reduction_card",
+        "description": "质量结果相对原始图的平坦区高频起伏降低比例。",
+        "dataset": "headline_metrics",
+        "sourceId": "headline_metrics_sql",
+        "metrics": [
+          {"label": "高频起伏降低", "field": "noise_reduction", "format": "percent"}
+        ]
+      },
+      {
+        "id": "edge_gain_card",
+        "description": "左右测量区平均数字边缘锐度相对原始图的提升。",
+        "dataset": "headline_metrics",
+        "sourceId": "headline_metrics_sql",
+        "metrics": [
+          {"label": "数字边缘锐度", "field": "edge_gain", "format": "percent", "signed": true}
+        ]
+      },
+      {
+        "id": "contrast_gain_card",
+        "description": "左右测量区平均局部对比度相对原始图的提升。",
+        "dataset": "headline_metrics",
+        "sourceId": "headline_metrics_sql",
+        "metrics": [
+          {"label": "局部对比度", "field": "contrast_gain", "format": "percent", "signed": true}
+        ]
+      },
+      {
+        "id": "geometry_card",
+        "description": "质量优化相对盲去噪基线的最坏中位 FWHM 相对变化。",
+        "dataset": "headline_metrics",
+        "sourceId": "headline_metrics_sql",
+        "metrics": [
+          {"label": "最大 FWHM 漂移", "field": "max_fwhm_drift", "format": "percent"}
+        ]
+      },
+      {
+        "id": "length_pass_card",
+        "description": "可选长度模块中通过内部像素级质量检查的层纹比例。",
+        "dataset": "headline_metrics",
+        "sourceId": "headline_metrics_sql",
+        "metrics": [
+          {"label": "层纹内部通过率", "field": "length_pass_fraction", "format": "percent"}
+        ]
+      }
+    ],
+    "charts": [
+      {
+        "id": "blind_before_after_chart",
+        "title": "盲去噪前后的层纹连续性与断裂率",
+        "subtitle": "左右 ROI；四项指标均越低越好",
+        "type": "bar",
+        "dataset": "blind_before_after",
+        "sourceId": "blind_before_after_sql",
+        "valueFormat": "number",
+        "layout": "full",
+        "question": "自监督盲去噪是否同时降低左右片层的连续性波动与断裂率？",
+        "rationale": "四个离散指标各有处理前后两个可比值，分组柱状图能直接显示下降幅度。",
+        "encodings": {
+          "x": {"field": "metric", "type": "nominal", "label": "指标"},
+          "y": {"field": "value", "type": "quantitative", "label": "比率"},
+          "color": {"field": "stage", "type": "nominal", "label": "阶段"},
+          "tooltip": [
+            {"field": "side", "type": "nominal", "label": "区域"},
+            {"field": "improvement", "type": "quantitative", "label": "降低比例", "format": "percent"},
+            {"field": "fwhm_drift", "type": "quantitative", "label": "FWHM 漂移", "format": "percent"}
+          ]
+        }
+      }
+    ],
+    "tables": [
+      {
+        "id": "innovation_table",
+        "title": "创新点、已有基础与本地新增约束",
+        "subtitle": "创新定位为工业测量场景的可审计组合创新",
+        "dataset": "innovation_matrix",
+        "sourceId": "innovation_matrix_sql",
+        "defaultSort": {"field": "order", "direction": "asc"},
+        "density": "spacious",
+        "layout": "full",
+        "columns": [
+          {"field": "order", "label": "序号", "type": "number"},
+          {"field": "innovation", "label": "创新点", "type": "text"},
+          {"field": "prior_basis", "label": "已有方法基础", "type": "text"},
+          {"field": "local_contribution", "label": "本工程新增", "type": "text"},
+          {"field": "evidence", "label": "当前证据", "type": "text"},
+          {"field": "boundary", "label": "结论边界", "type": "text"}
+        ]
+      },
+      {
+        "id": "validation_table",
+        "title": "结构与质量守卫结果",
+        "subtitle": "保存 JSON 中的最终候选；所有阈值按代码执行",
+        "dataset": "validation_summary",
+        "sourceId": "validation_summary_sql",
+        "defaultSort": {"field": "order", "direction": "asc"},
+        "density": "spacious",
+        "layout": "full",
+        "columns": [
+          {"field": "order", "label": "序号", "type": "number"},
+          {"field": "metric", "label": "守卫/指标", "type": "text"},
+          {"field": "observed", "label": "观测值", "type": "text"},
+          {"field": "threshold", "label": "阈值", "type": "text"},
+          {"field": "status", "label": "状态", "type": "text"},
+          {"field": "interpretation", "label": "解释", "type": "text"}
+        ]
+      }
+    ],
+    "sources": [
+      {
+        "id": "headline_metrics_sql",
+        "label": "头部指标 SQLite 查询",
+        "path": "queries/headline_metrics.sql",
+        "query": {
+          "engine": "sqlite",
+          "language": "sql",
+          "sql": "SELECT noise_reduction, edge_gain, contrast_gain, max_fwhm_drift, quality_ssim, length_pass_fraction, image_count, image_width, image_height, bit_depth FROM headline_metrics LIMIT 1;",
+          "description": "读取由三个保存 JSON 结果核对并物化的报告头部指标。",
+          "executed_at": "2026-09-05T07:40:59Z",
+          "tables_used": ["headline_metrics"],
+          "filters": ["single reviewed image experiment; no row filtering"],
+          "metric_definitions": [
+            "noise_reduction = 1 - selected flat-region high-frequency roughness / original roughness",
+            "edge_gain = mean selected edge acutance / mean original edge acutance - 1",
+            "contrast_gain = mean selected local contrast / mean original local contrast - 1",
+            "max_fwhm_drift = maximum left/right relative median FWHM change versus blind baseline",
+            "length_pass_fraction = passing measured layers / detected layers"
+          ]
+        }
+      },
+      {
+        "id": "blind_before_after_sql",
+        "label": "盲去噪前后 SQLite 查询",
+        "path": "queries/blind_before_after.sql",
+        "query": {
+          "engine": "sqlite",
+          "language": "sql",
+          "sql": "SELECT metric, stage, value, side, improvement, fwhm_drift FROM blind_before_after ORDER BY CASE metric WHEN '左侧连续性 CV' THEN 1 WHEN '右侧连续性 CV' THEN 2 WHEN '左侧断裂率' THEN 3 WHEN '右侧断裂率' THEN 4 ELSE 5 END, CASE stage WHEN '处理前' THEN 1 ELSE 2 END;",
+          "description": "读取盲去噪前后左右片层连续性和断裂率。",
+          "executed_at": "2026-09-05T07:40:59Z",
+          "tables_used": ["blind_before_after"],
+          "filters": ["left and right measurement ROIs; before and after blind denoising"],
+          "metric_definitions": [
+            "continuity CV = standard deviation of row-wise highlight residual around its smooth trend divided by median highlight intensity",
+            "dropout fraction = fraction of rows below 70% of the local highlight trend threshold",
+            "improvement = (before - after) / before"
+          ]
+        }
+      },
+      {
+        "id": "innovation_matrix_sql",
+        "label": "创新矩阵 SQLite 查询",
+        "path": "queries/innovation_matrix.sql",
+        "query": {
+          "engine": "sqlite",
+          "language": "sql",
+          "sql": "SELECT \"order\", innovation, prior_basis, local_contribution, evidence, boundary FROM innovation_matrix ORDER BY \"order\" ASC;",
+          "description": "读取经代码和结果审计后的创新定位矩阵。",
+          "executed_at": "2026-09-05T07:40:59Z",
+          "tables_used": ["innovation_matrix"],
+          "filters": ["engineering contributions in the current repository"],
+          "metric_definitions": []
+        }
+      },
+      {
+        "id": "validation_summary_sql",
+        "label": "验证汇总 SQLite 查询",
+        "path": "queries/validation_summary.sql",
+        "query": {
+          "engine": "sqlite",
+          "language": "sql",
+          "sql": "SELECT \"order\", metric, observed, threshold, status, interpretation FROM validation_summary ORDER BY \"order\" ASC;",
+          "description": "读取盲去噪、质量优化与长度扩展的关键守卫结果。",
+          "executed_at": "2026-09-05T07:40:59Z",
+          "tables_used": ["validation_summary"],
+          "filters": ["final selected candidates only"],
+          "metric_definitions": ["status is pass when the observed value satisfies the threshold executed by the saved code"]
+        }
+      },
+      {"id": "blind_manifest", "label": "盲去噪运行清单", "path": "evidence/run_manifest.json"},
+      {"id": "quality_metrics", "label": "质量优化指标", "path": "evidence/quality_metrics.json"},
+      {"id": "length_qa", "label": "长度扩展质量检查", "path": "evidence/length_qa.json"},
+      {"id": "code_bundle", "label": "算法实现代码", "path": "app"},
+      {"id": "apr_rd", "label": "APR-RD, AAAI 2025", "href": "https://ojs.aaai.org/index.php/AAAI/article/view/32447"},
+      {"id": "foundir_v2", "label": "FoundIR-v2 官方代码", "href": "https://github.com/cschenxiang/FoundIR-v2"}
+    ],
+    "blocks": [
+      {
+        "id": "title",
+        "type": "markdown",
+        "body": "# 面向可测量层纹的单图自监督盲去噪与保真增强"
+      },
+      {
+        "id": "technical_summary",
+        "type": "markdown",
+        "body": "## 技术摘要\n\n本算法解决单幅 16 位工业 CT 图像中“去噪清晰化会改变片层几何”的核心矛盾。其主要贡献不是把通用生成模型直接用于测量，而是把生成式视觉输出与测量数据硬隔离，再用单图自监督、隐藏条件集成、噪声尺度限幅、方向性连续化和几何守卫形成可审计链路。\n\n本图质量结果相对原始图降低平坦区高频起伏 **23.03%**，数字边缘锐度提高 **5.87%**，局部对比度提高 **3.00%**；最大 FWHM 漂移 **2.62%**，相对盲去噪基线的 ROI SSIM 为 **0.99857**。可选长度模块 100 条层纹中 99 条通过内部检查。\n\n**结论等级：可分享但需带限制。** 这些数字是单图内部验证，不等于外部真值精度、扫描仪物理分辨率提升或跨设备泛化。"
+      },
+      {
+        "id": "metric_strip",
+        "type": "metric-strip",
+        "cardIds": ["noise_reduction_card", "edge_gain_card", "contrast_gain_card", "geometry_card", "length_pass_card"]
+      },
+      {
+        "id": "finding_heading",
+        "type": "markdown",
+        "body": "## 连续性改善没有以明显厚度漂移为代价\n\n盲去噪阶段在左右两侧都降低了层内波动和断裂。下图四项指标均为比率且越低越好；处理后柱下降的同时，独立 FWHM 守卫显示左右宽度漂移仅 0.049% 和 0.358%。这支持“去掉的主要是断续噪声，而不是把片层压成尖线”的本图内部判断。",
+        "sourceId": "blind_manifest"
+      },
+      {
+        "id": "blind_chart_block",
+        "type": "chart",
+        "chartId": "blind_before_after_chart"
+      },
+      {
+        "id": "quality_finding",
+        "type": "markdown",
+        "body": "## 自动搜索把清晰度提升限制在测量守卫之内\n\n质量阶段不是选择视觉上最锐的候选，而是先剔除片层数量、中心位移、FWHM、平坦区噪声和 SSIM 不合格的参数，再在剩余候选中优化边缘和对比度。本图选择 `edge_amount=0.32`、`structure_gain=0.06`；最大片层中心位移 1 px、最大 FWHM 变化 2.62%、平坦区起伏相对盲去噪基线增加 2.08%，均位于守卫内。数字锐度提升不代表扫描设备物理分辨率提升。",
+        "sourceId": "quality_metrics"
+      },
+      {
+        "id": "innovation_heading",
+        "type": "markdown",
+        "body": "## 创新来自测量约束下的系统组合\n\n相邻替换、盲点预测、反锐化和亚像素拟合都有既有研究基础。本工程的可辩护创新，是把这些部件改造成一条对 16 位单图、相关噪声、方向性片层和测量风险负责的闭环，并为每次处理输出拒判证据。下表明确列出继承部分、本地新增和当前证据，避免把工程创新误写成未经检索确认的学术首创。"
+      },
+      {
+        "id": "innovation_table_block",
+        "type": "table",
+        "tableId": "innovation_table"
+      },
+      {
+        "id": "scope",
+        "type": "markdown",
+        "body": "## 证据范围与指标定义\n\n输入为单页 1600 × 2200 uint16 TIFF。盲去噪审计在左右片层 ROI 分别计算峰数、最近邻中心位移、中位半高宽（FWHM）、沿片层方向的连续性 CV 和断裂率。质量阶段以原始图评价高频起伏、边缘锐度和局部对比度，并以盲去噪图作为几何守卫基线。长度阶段的统计粒度是一条可见亮层纹一行，共 100 行。\n\n连续性 CV 是逐行层纹强度相对平滑趋势的残差标准差与中位强度之比；断裂率是亮度低于趋势阈值的行比例；“锐度”是图像域梯度指标；“长度通过率”是满足代码内像素级稳定性阈值的层纹比例。"
+      },
+      {
+        "id": "method",
+        "type": "markdown",
+        "body": "## 模型与处理链路\n\n### 1. 相邻替换自监督\n训练随机隐藏约 12% 中心像素，以八种邻域偏移替换，只在隐藏位置计算 Charbonnier 损失。五层 3×3 卷积、12 个中间通道在本图内部训练 600 次。\n\n### 2. 隐藏条件集成\n推理执行八次约 55% 随机掩膜；像素只有在被隐藏时的预测才进入均值和标准差，避免中心值泄漏，并输出不确定性图。\n\n### 3. 数据一致性与方向先验\n用高通 MAD 估计噪声尺度，单像素总改变量限制在 ±2.75σ；二维梯度保护强边缘。随后只沿片层长度方向平滑，并用横向 Sobel 梯度保护厚度边界。\n\n### 4. 守卫约束的质量优化\n20 组边缘/结构增益候选先通过片层数量、中心位移、FWHM、平坦区噪声和 SSIM 守卫，再按清晰度目标评分。\n\n### 5. 原始数据锚定的长度扩展\n可选模块跟踪弯曲中心路径并拟合亚像素端点；推荐长度来自原始 16 位路径，增强重检测只用于诊断。",
+        "sourceId": "code_bundle"
+      },
+      {
+        "id": "validation_heading",
+        "type": "markdown",
+        "body": "## 保存结果通过了配置守卫，但不等于计量认证\n\n关键百分比已从三个 JSON 结果独立重算，三个阶段的保存守卫标志均为通过。下表列出最容易因增强而失真的结构指标。自动守卫能发现明显拓扑或宽度破坏，但没有外部真值时，仍不能排除共同偏差或检测器本身的盲区。"
+      },
+      {
+        "id": "validation_table_block",
+        "type": "table",
+        "tableId": "validation_table"
+      },
+      {
+        "id": "limitations",
+        "type": "markdown",
+        "body": "## 单图证据限制了创新结论的外推\n\n- 没有配对干净真值、重复扫描或跨设备测试，不能证明泛化。\n- TIFF 缺少像素物理尺寸，且没有标准件与系统 PSF/MTF，不能报告毫米或微米精度。\n- 多掩膜标准差尚未与真实测量误差校准，当前只适合作为复核提示。\n- 本地方法借鉴 APR-RD 的相邻替换思想，但不是完整论文复现，不能据此声称优于 APR-RD、Blind2Sound 或 FoundIR-v2。\n- 参数与 ROI 针对当前片层方向设置；明显旋转、弯曲或不同工件需要重新定义方向场和守卫。"
+      },
+      {
+        "id": "next_steps",
+        "type": "markdown",
+        "body": "## 下一轮应把内部守卫升级为外部精度验证\n\n1. 采集至少 20 组同位置重复扫描，覆盖曝光、装夹和时间漂移。\n2. 使用标准件或显微测量建立厚度与长度真值，并补充 `mm/pixel`。\n3. 测量 PSF/MTF，把数字锐化指标与物理可分辨能力分开。\n4. 建立包含缺层、粘连、断裂和不同厚度的盲测集。\n5. 在统一守卫体系下比较 BM3D、AP-BSN/Noise2Void、APR-RD、Blind2Sound 和域内扩散模型。\n6. 对限幅倍数、方向性强度和守卫阈值做消融，并校准不确定性拒判阈值。"
+      },
+      {
+        "id": "questions",
+        "type": "markdown",
+        "body": "## 仍需回答的研究问题\n\n- 相邻替换距离能否根据实测噪声相关长度自适应？\n- 局部结构张量能否替代固定竖直方向，以处理弯曲或旋转片层？\n- 不确定性图与真实厚度/端点误差之间是否存在可迁移的校准关系？\n- 获得投影域或重复曝光数据后，物理前向模型约束能否进一步降低偏差？\n- 守卫体系能否扩展到缺层、粘连和断裂等拓扑事件，而不仅是峰数与 FWHM？"
+      }
+    ]
+  },
+  "snapshot": {
+    "version": 1,
+    "generatedAt": "2026-09-05T07:40:59Z",
+    "status": "ready",
+    "datasets": {
+      "headline_metrics": [
+        {
+          "noise_reduction": 0.23025871759101602,
+          "edge_gain": 0.05865883585981235,
+          "contrast_gain": 0.02999923193109,
+          "max_fwhm_drift": 0.026175325572651675,
+          "quality_ssim": 0.9985747524176588,
+          "length_pass_fraction": 0.99,
+          "image_count": 1,
+          "image_width": 2200,
+          "image_height": 1600,
+          "bit_depth": 16
+        }
+      ],
+      "blind_before_after": [
+        {"metric": "左侧连续性 CV", "stage": "处理前", "value": 0.11295257111926679, "side": "左侧", "improvement": 0.3060265261014414, "fwhm_drift": 0.0004893606506481962},
+        {"metric": "左侧连续性 CV", "stage": "处理后", "value": 0.07838608816541158, "side": "左侧", "improvement": 0.3060265261014414, "fwhm_drift": 0.0004893606506481962},
+        {"metric": "右侧连续性 CV", "stage": "处理前", "value": 0.10950097597727942, "side": "右侧", "improvement": 0.27718530722750806, "fwhm_drift": 0.0035829269702096767},
+        {"metric": "右侧连续性 CV", "stage": "处理后", "value": 0.07914891430930525, "side": "右侧", "improvement": 0.27718530722750806, "fwhm_drift": 0.0035829269702096767},
+        {"metric": "左侧断裂率", "stage": "处理前", "value": 0.036585365853658534, "side": "左侧", "improvement": 0.5333333333333332, "fwhm_drift": 0.0004893606506481962},
+        {"metric": "左侧断裂率", "stage": "处理后", "value": 0.01707317073170732, "side": "左侧", "improvement": 0.5333333333333332, "fwhm_drift": 0.0004893606506481962},
+        {"metric": "右侧断裂率", "stage": "处理前", "value": 0.03048780487804878, "side": "右侧", "improvement": 0.76, "fwhm_drift": 0.0035829269702096767},
+        {"metric": "右侧断裂率", "stage": "处理后", "value": 0.007317073170731708, "side": "右侧", "improvement": 0.76, "fwhm_drift": 0.0035829269702096767}
+      ],
+      "innovation_matrix": [
+        {"order": 1, "innovation": "生成式/测量链路硬隔离", "prior_basis": "生成式恢复与传统测量工作流", "local_contribution": "命名、文件流和容器入口阻止生成像素进入测量输出", "evidence": "生成结果仅输出为 VISUAL_ONLY", "boundary": "属于安全架构创新，不是新生成模型"},
+        {"order": 2, "innovation": "16 位单图相邻替换自监督", "prior_basis": "APR-RD、Noise2Self/盲点网络", "local_contribution": "适配当前灰度域、相关噪声与片层内部统计", "evidence": "600 次单图训练；左右层数不变", "boundary": "不是 APR-RD 完整复现"},
+        {"order": 3, "innovation": "隐藏条件预测集成", "prior_basis": "掩膜自监督与集成估计", "local_contribution": "仅统计像素被隐藏时的预测并输出逐像素标准差", "evidence": "8 次掩膜；保存 uncertainty TIFF", "boundary": "标准差尚未校准为置信区间"},
+        {"order": 4, "innovation": "噪声尺度限幅与边缘门控", "prior_basis": "鲁棒噪声估计、数据一致性", "local_contribution": "网络修正受 ±2.75σ 与梯度门共同约束", "evidence": "残差上限与结构守卫均记录", "boundary": "不能保证所有微小缺陷都不受影响"},
+        {"order": 5, "innovation": "方向性连续化", "prior_basis": "各向异性滤波", "local_contribution": "沿片层延伸方向平滑、横向 Sobel 保护厚度边界", "evidence": "连续性降低约 28%–31%；FWHM 漂移小于 0.36%", "boundary": "固定方向需对旋转/弯曲图适配"},
+        {"order": 6, "innovation": "守卫约束的自动参数搜索", "prior_basis": "图像增强参数搜索", "local_contribution": "候选先满足拓扑、位移、宽度、噪声和 SSIM，再比较清晰度", "evidence": "最终质量候选全部守卫通过", "boundary": "阈值尚未由外部真值标定"},
+        {"order": 7, "innovation": "原始数据锚定测量", "prior_basis": "中心路径跟踪与亚像素端点", "local_contribution": "推荐值来自原图；增强重检测仅作诊断", "evidence": "99/100 层通过，异常层单独拒判", "boundary": "只有像素级内部一致性"},
+        {"order": 8, "innovation": "证据化输出", "prior_basis": "MLOps 与质量控制", "local_contribution": "同步输出 16 位结果、残差、不确定性、守卫、参数和权重", "evidence": "三个 JSON 清单和可复现容器", "boundary": "审计性不等于计量认证"}
+      ],
+      "validation_summary": [
+        {"order": 1, "metric": "质量 ROI SSIM", "observed": "0.99857", "threshold": ">= 0.985", "status": "通过", "interpretation": "质量优化相对盲去噪基线变化很小"},
+        {"order": 2, "metric": "最大片层中心位移", "observed": "1 px", "threshold": "<= 1 px", "status": "通过", "interpretation": "达到守卫边界，应继续人工看残差"},
+        {"order": 3, "metric": "最大中位 FWHM 变化", "observed": "2.62%", "threshold": "<= 5%", "status": "通过", "interpretation": "未检测到明显宽度重构"},
+        {"order": 4, "metric": "平坦区起伏相对盲去噪基线", "observed": "+2.08%", "threshold": "<= +3%", "status": "通过", "interpretation": "锐化回注噪声仍在上限内"},
+        {"order": 5, "metric": "盲去噪左右峰中心最大位移", "observed": "0 px", "threshold": "<= 1 px", "status": "通过", "interpretation": "主要峰位置保持"},
+        {"order": 6, "metric": "长度模块通过率", "observed": "99%", "threshold": ">= 90%", "status": "通过", "interpretation": "1 条层纹被明确标记复核"},
+        {"order": 7, "metric": "长度不确定度 95% 分位", "observed": "0.991 px", "threshold": "单层 <= 3 px", "status": "通过", "interpretation": "内部像素重复性较高，但无物理标定"}
+      ]
+    }
+  },
+  "sources": [
+    {
+      "id": "headline_metrics_sql",
+      "label": "头部指标 SQLite 查询",
+      "path": "queries/headline_metrics.sql",
+      "query": {
+        "engine": "sqlite",
+        "language": "sql",
+        "sql": "SELECT noise_reduction, edge_gain, contrast_gain, max_fwhm_drift, quality_ssim, length_pass_fraction, image_count, image_width, image_height, bit_depth FROM headline_metrics LIMIT 1;",
+        "description": "读取由三个保存 JSON 结果核对并物化的报告头部指标。",
+        "executed_at": "2026-09-05T07:40:59Z",
+        "tables_used": ["headline_metrics"],
+        "filters": ["single reviewed image experiment; no row filtering"],
+        "metric_definitions": ["headline metrics are recomputed from saved blind, quality and length result JSON files"]
+      }
+    },
+    {
+      "id": "blind_before_after_sql",
+      "label": "盲去噪前后 SQLite 查询",
+      "path": "queries/blind_before_after.sql",
+      "query": {
+        "engine": "sqlite",
+        "language": "sql",
+        "sql": "SELECT metric, stage, value, side, improvement, fwhm_drift FROM blind_before_after ORDER BY CASE metric WHEN '左侧连续性 CV' THEN 1 WHEN '右侧连续性 CV' THEN 2 WHEN '左侧断裂率' THEN 3 WHEN '右侧断裂率' THEN 4 ELSE 5 END, CASE stage WHEN '处理前' THEN 1 ELSE 2 END;",
+        "description": "读取盲去噪前后左右片层连续性和断裂率。",
+        "executed_at": "2026-09-05T07:40:59Z",
+        "tables_used": ["blind_before_after"],
+        "filters": ["left and right measurement ROIs; before and after blind denoising"],
+        "metric_definitions": ["improvement = (before - after) / before"]
+      }
+    },
+    {
+      "id": "innovation_matrix_sql",
+      "label": "创新矩阵 SQLite 查询",
+      "path": "queries/innovation_matrix.sql",
+      "query": {
+        "engine": "sqlite",
+        "language": "sql",
+        "sql": "SELECT \"order\", innovation, prior_basis, local_contribution, evidence, boundary FROM innovation_matrix ORDER BY \"order\" ASC;",
+        "description": "读取经代码和结果审计后的创新定位矩阵。",
+        "executed_at": "2026-09-05T07:40:59Z",
+        "tables_used": ["innovation_matrix"],
+        "filters": ["engineering contributions in the current repository"],
+        "metric_definitions": []
+      }
+    },
+    {
+      "id": "validation_summary_sql",
+      "label": "验证汇总 SQLite 查询",
+      "path": "queries/validation_summary.sql",
+      "query": {
+        "engine": "sqlite",
+        "language": "sql",
+        "sql": "SELECT \"order\", metric, observed, threshold, status, interpretation FROM validation_summary ORDER BY \"order\" ASC;",
+        "description": "读取盲去噪、质量优化与长度扩展的关键守卫结果。",
+        "executed_at": "2026-09-05T07:40:59Z",
+        "tables_used": ["validation_summary"],
+        "filters": ["final selected candidates only"],
+        "metric_definitions": ["status is pass when the observed value satisfies the threshold executed by the saved code"]
+      }
+    },
+    {"id": "blind_manifest", "label": "盲去噪运行清单", "path": "evidence/run_manifest.json"},
+    {"id": "quality_metrics", "label": "质量优化指标", "path": "evidence/quality_metrics.json"},
+    {"id": "length_qa", "label": "长度扩展质量检查", "path": "evidence/length_qa.json"},
+    {"id": "code_bundle", "label": "算法实现代码", "path": "app"},
+    {"id": "apr_rd", "label": "APR-RD, AAAI 2025", "href": "https://ojs.aaai.org/index.php/AAAI/article/view/32447"},
+    {"id": "foundir_v2", "label": "FoundIR-v2 官方代码", "href": "https://github.com/cschenxiang/FoundIR-v2"}
+  ]
+}

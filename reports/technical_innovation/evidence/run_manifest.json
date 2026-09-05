@@ -1,0 +1,332 @@
+{
+  "status": "measurement output passed guardrails",
+  "source": {
+    "path": "outputs/ct_generative_blind_restore/input/source_16bit.tif",
+    "shape": [
+      1600,
+      2200
+    ],
+    "dtype": "uint16",
+    "min": 0,
+    "max": 65535,
+    "integer_scale": 65535.0
+  },
+  "device": "cpu",
+  "training_seconds": 20.14,
+  "parameters": {
+    "train_roi": {
+      "y0": 620,
+      "y1": 1210,
+      "x0": 320,
+      "x1": 1880
+    },
+    "left_roi": {
+      "y0": 700,
+      "y1": 1110,
+      "x0": 370,
+      "x1": 970
+    },
+    "right_roi": {
+      "y0": 700,
+      "y1": 1110,
+      "x0": 1220,
+      "x1": 1830
+    },
+    "iterations": 600,
+    "patch": 96,
+    "batch": 4,
+    "passes": 8,
+    "strength": 0.2,
+    "directional_strength": 0.7,
+    "directional_sigma": 3.0,
+    "seed": 23
+  },
+  "method": {
+    "measurement": "APR-inspired adjacent replacement + Noise2Self masked prediction + uncertainty ensemble + edge/data consistency",
+    "visual": "external generative candidate + deterministic local-contrast post-processing",
+    "claim_boundary": "Engineering adaptation; not an exact reproduction of APR-RD, Blind2Sound, or FoundIR-v2."
+  },
+  "blend": {
+    "estimated_noise_sigma_normalized": 0.009324387809450843,
+    "change_cap_normalized": 0.02564206647598982,
+    "edge_gate_threshold": 0.19238819675279617
+  },
+  "mask_count": {
+    "min": 0.0,
+    "mean": 4.360641956329346,
+    "max": 8.0
+  },
+  "training_history": [
+    {
+      "iteration": 1,
+      "masked_loss": 0.15851210057735443,
+      "elapsed_s": 0.04
+    },
+    {
+      "iteration": 50,
+      "masked_loss": 0.03813483193516731,
+      "elapsed_s": 1.34
+    },
+    {
+      "iteration": 100,
+      "masked_loss": 0.014356250874698162,
+      "elapsed_s": 2.68
+    },
+    {
+      "iteration": 150,
+      "masked_loss": 0.010822701267898083,
+      "elapsed_s": 4.05
+    },
+    {
+      "iteration": 200,
+      "masked_loss": 0.0076579805463552475,
+      "elapsed_s": 5.38
+    },
+    {
+      "iteration": 250,
+      "masked_loss": 0.007278186269104481,
+      "elapsed_s": 6.72
+    },
+    {
+      "iteration": 300,
+      "masked_loss": 0.0067312405444681644,
+      "elapsed_s": 8.1
+    },
+    {
+      "iteration": 350,
+      "masked_loss": 0.006998610217124224,
+      "elapsed_s": 9.45
+    },
+    {
+      "iteration": 400,
+      "masked_loss": 0.006507856771349907,
+      "elapsed_s": 10.8
+    },
+    {
+      "iteration": 450,
+      "masked_loss": 0.006882315967231989,
+      "elapsed_s": 12.19
+    },
+    {
+      "iteration": 500,
+      "masked_loss": 0.0071915071457624435,
+      "elapsed_s": 13.53
+    },
+    {
+      "iteration": 550,
+      "masked_loss": 0.0073317582719028,
+      "elapsed_s": 14.88
+    },
+    {
+      "iteration": 600,
+      "masked_loss": 0.006502432283014059,
+      "elapsed_s": 16.25
+    }
+  ],
+  "qa": {
+    "left": {
+      "before": {
+        "detected_peaks": 25,
+        "peak_positions": [
+          394,
+          409,
+          432,
+          456,
+          488,
+          512,
+          536,
+          560,
+          573,
+          597,
+          621,
+          644,
+          668,
+          692,
+          716,
+          740,
+          764,
+          787,
+          812,
+          836,
+          860,
+          884,
+          908,
+          932,
+          954
+        ],
+        "median_fwhm_px": 4.620334292702296,
+        "median_continuity_cv": 0.11295257111926679,
+        "median_dropout_fraction": 0.036585365853658534
+      },
+      "after": {
+        "detected_peaks": 25,
+        "peak_positions": [
+          394,
+          409,
+          432,
+          456,
+          488,
+          512,
+          536,
+          560,
+          573,
+          597,
+          621,
+          644,
+          668,
+          692,
+          716,
+          740,
+          764,
+          787,
+          812,
+          836,
+          860,
+          884,
+          908,
+          932,
+          954
+        ],
+        "median_fwhm_px": 4.6225953024979844,
+        "median_continuity_cv": 0.07838608816541158,
+        "median_dropout_fraction": 0.01707317073170732
+      },
+      "shift": {
+        "matched": 25,
+        "median_abs_px": 0.0,
+        "max_abs_px": 0.0
+      }
+    },
+    "right": {
+      "before": {
+        "detected_peaks": 30,
+        "peak_positions": [
+          1244,
+          1263,
+          1286,
+          1310,
+          1334,
+          1358,
+          1382,
+          1406,
+          1430,
+          1445,
+          1464,
+          1489,
+          1513,
+          1526,
+          1538,
+          1550,
+          1562,
+          1574,
+          1586,
+          1598,
+          1622,
+          1635,
+          1659,
+          1693,
+          1707,
+          1731,
+          1764,
+          1788,
+          1802,
+          1818
+        ],
+        "median_fwhm_px": 4.94953566040838,
+        "median_continuity_cv": 0.10950097597727942,
+        "median_dropout_fraction": 0.03048780487804878
+      },
+      "after": {
+        "detected_peaks": 30,
+        "peak_positions": [
+          1244,
+          1263,
+          1286,
+          1310,
+          1334,
+          1358,
+          1382,
+          1406,
+          1430,
+          1445,
+          1464,
+          1489,
+          1513,
+          1526,
+          1538,
+          1550,
+          1562,
+          1574,
+          1586,
+          1598,
+          1622,
+          1635,
+          1659,
+          1693,
+          1707,
+          1731,
+          1764,
+          1788,
+          1802,
+          1818
+        ],
+        "median_fwhm_px": 4.967269485216072,
+        "median_continuity_cv": 0.07914891430930525,
+        "median_dropout_fraction": 0.007317073170731708
+      },
+      "shift": {
+        "matched": 30,
+        "median_abs_px": 0.0,
+        "max_abs_px": 0.0
+      }
+    },
+    "measurement_roi_ssim": 0.9733830597737437,
+    "residual_mean": -6.483632751042023e-05,
+    "residual_rms": 0.007881959900259972,
+    "residual_abs_p99": 0.02418188937008381,
+    "uncertainty_median": 0.0043587819673120975,
+    "uncertainty_p99": 0.02586911726742983,
+    "central_highlight_boundaries": {
+      "left_edge": {
+        "before": {
+          "continuity_cv": 0.09002133718198445,
+          "dropout_fraction": 0.004878048780487805,
+          "median_intensity": 0.29706263542175293
+        },
+        "after": {
+          "continuity_cv": 0.0658161750810755,
+          "dropout_fraction": 0.0,
+          "median_intensity": 0.2918631434440613
+        }
+      },
+      "right_edge": {
+        "before": {
+          "continuity_cv": 0.07523535694806997,
+          "dropout_fraction": 0.0,
+          "median_intensity": 0.2921416163444519
+        },
+        "after": {
+          "continuity_cv": 0.05747972132589768,
+          "dropout_fraction": 0.0,
+          "median_intensity": 0.2860533595085144
+        }
+      }
+    },
+    "fwhm_relative_change": {
+      "left": 0.0004893606506481962,
+      "right": 0.0035829269702096767
+    },
+    "guardrail_pass": true,
+    "guardrails": {
+      "layer_count_delta_max": 1,
+      "peak_shift_max_px": 1.0,
+      "fwhm_relative_change_max": 0.05,
+      "central_highlight_dropout_allowed_increase": 0.005,
+      "ssim_min": 0.97
+    }
+  },
+  "prohibitions": [
+    "Do not use GENERATIVE_* files for thickness measurement, defect acceptance, or ground truth.",
+    "Absolute thickness still requires pixel-size and system-PSF calibration."
+  ]
+}

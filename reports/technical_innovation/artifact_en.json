@@ -1,0 +1,752 @@
+{
+  "surface": "report",
+  "manifest": {
+    "version": 1,
+    "surface": "report",
+    "title": "Single-Image Self-Supervised Blind Denoising and Fidelity-Preserving Enhancement for Measurable Lamellae",
+    "description": "A technical report focused on engineering innovation, validation evidence, and metrology boundaries.",
+    "generatedAt": "2026-09-05T07:40:59Z",
+    "cards": [
+      {
+        "id": "noise_reduction_card",
+        "description": "Flat-region high-frequency roughness reduction in the quality result versus the raw image.",
+        "dataset": "headline_metrics",
+        "sourceId": "headline_metrics_sql",
+        "metrics": [
+          {
+            "label": "High-frequency roughness reduction",
+            "field": "noise_reduction",
+            "format": "percent"
+          }
+        ]
+      },
+      {
+        "id": "edge_gain_card",
+        "description": "Mean digital edge-acutance improvement across the left and right measurement ROIs versus the raw image.",
+        "dataset": "headline_metrics",
+        "sourceId": "headline_metrics_sql",
+        "metrics": [
+          {
+            "label": "Digital edge acutance",
+            "field": "edge_gain",
+            "format": "percent",
+            "signed": true
+          }
+        ]
+      },
+      {
+        "id": "contrast_gain_card",
+        "description": "Mean local-contrast improvement across the left and right measurement ROIs versus the raw image.",
+        "dataset": "headline_metrics",
+        "sourceId": "headline_metrics_sql",
+        "metrics": [
+          {
+            "label": "Local contrast",
+            "field": "contrast_gain",
+            "format": "percent",
+            "signed": true
+          }
+        ]
+      },
+      {
+        "id": "geometry_card",
+        "description": "Worst relative median FWHM change in quality optimization versus the blind-denoised baseline.",
+        "dataset": "headline_metrics",
+        "sourceId": "headline_metrics_sql",
+        "metrics": [
+          {
+            "label": "Maximum FWHM drift",
+            "field": "max_fwhm_drift",
+            "format": "percent"
+          }
+        ]
+      },
+      {
+        "id": "length_pass_card",
+        "description": "Fraction of detected lamellae passing the optional length module's internal pixel-domain checks.",
+        "dataset": "headline_metrics",
+        "sourceId": "headline_metrics_sql",
+        "metrics": [
+          {
+            "label": "Internal length pass rate",
+            "field": "length_pass_fraction",
+            "format": "percent"
+          }
+        ]
+      }
+    ],
+    "charts": [
+      {
+        "id": "blind_before_after_chart",
+        "title": "Lamellar continuity and dropout before and after blind denoising",
+        "subtitle": "Left and right ROIs; lower is better for all four metrics",
+        "type": "bar",
+        "dataset": "blind_before_after",
+        "sourceId": "blind_before_after_sql",
+        "valueFormat": "number",
+        "layout": "full",
+        "question": "Does self-supervised blind denoising reduce both continuity variation and dropout in the left and right lamellar regions?",
+        "rationale": "Each of four discrete metrics has a directly comparable before/after value, so grouped bars expose the reduction without implying a time trend.",
+        "encodings": {
+          "x": {
+            "field": "metric",
+            "type": "nominal",
+            "label": "Metric"
+          },
+          "y": {
+            "field": "value",
+            "type": "quantitative",
+            "label": "Ratio"
+          },
+          "color": {
+            "field": "stage",
+            "type": "nominal",
+            "label": "Stage"
+          },
+          "tooltip": [
+            {
+              "field": "side",
+              "type": "nominal",
+              "label": "ROI"
+            },
+            {
+              "field": "improvement",
+              "type": "quantitative",
+              "label": "Reduction",
+              "format": "percent"
+            },
+            {
+              "field": "fwhm_drift",
+              "type": "quantitative",
+              "label": "FWHM drift",
+              "format": "percent"
+            }
+          ]
+        }
+      }
+    ],
+    "tables": [
+      {
+        "id": "innovation_table",
+        "title": "Innovation, prior basis, and repository-specific constraints",
+        "subtitle": "Positioned as auditable system integration for industrial measurement",
+        "dataset": "innovation_matrix",
+        "sourceId": "innovation_matrix_sql",
+        "defaultSort": {
+          "field": "order",
+          "direction": "asc"
+        },
+        "density": "spacious",
+        "layout": "full",
+        "columns": [
+          {
+            "field": "order",
+            "label": "No.",
+            "type": "number"
+          },
+          {
+            "field": "innovation",
+            "label": "Innovation",
+            "type": "text"
+          },
+          {
+            "field": "prior_basis",
+            "label": "Prior basis",
+            "type": "text"
+          },
+          {
+            "field": "local_contribution",
+            "label": "Repository contribution",
+            "type": "text"
+          },
+          {
+            "field": "evidence",
+            "label": "Current evidence",
+            "type": "text"
+          },
+          {
+            "field": "boundary",
+            "label": "Claim boundary",
+            "type": "text"
+          }
+        ]
+      },
+      {
+        "id": "validation_table",
+        "title": "Structural and quality guardrail results",
+        "subtitle": "Final selected candidates recorded in saved JSON; thresholds match the executed code",
+        "dataset": "validation_summary",
+        "sourceId": "validation_summary_sql",
+        "defaultSort": {
+          "field": "order",
+          "direction": "asc"
+        },
+        "density": "spacious",
+        "layout": "full",
+        "columns": [
+          {
+            "field": "order",
+            "label": "No.",
+            "type": "number"
+          },
+          {
+            "field": "metric",
+            "label": "Guardrail / metric",
+            "type": "text"
+          },
+          {
+            "field": "observed",
+            "label": "Observed",
+            "type": "text"
+          },
+          {
+            "field": "threshold",
+            "label": "Threshold",
+            "type": "text"
+          },
+          {
+            "field": "status",
+            "label": "Status",
+            "type": "text"
+          },
+          {
+            "field": "interpretation",
+            "label": "Interpretation",
+            "type": "text"
+          }
+        ]
+      }
+    ],
+    "sources": [
+      {
+        "id": "headline_metrics_sql",
+        "label": "Headline metrics SQLite query",
+        "path": "queries_en/headline_metrics.sql",
+        "query": {
+          "engine": "sqlite",
+          "language": "sql",
+          "sql": "SELECT noise_reduction, edge_gain, contrast_gain, max_fwhm_drift, quality_ssim, length_pass_fraction, image_count, image_width, image_height, bit_depth FROM headline_metrics LIMIT 1;",
+          "description": "Reads report headline metrics materialized after cross-checking the three saved result JSON files.",
+          "executed_at": "2026-09-05T07:40:59Z",
+          "tables_used": [
+            "headline_metrics"
+          ],
+          "filters": [
+            "single reviewed image experiment; no row filtering"
+          ],
+          "metric_definitions": [
+            "noise_reduction = 1 - selected flat-region high-frequency roughness / original roughness",
+            "edge_gain = mean selected edge acutance / mean original edge acutance - 1",
+            "contrast_gain = mean selected local contrast / mean original local contrast - 1",
+            "max_fwhm_drift = maximum left/right relative median FWHM change versus blind baseline",
+            "length_pass_fraction = passing measured layers / detected layers"
+          ]
+        }
+      },
+      {
+        "id": "blind_before_after_sql",
+        "label": "Blind-denoising before/after SQLite query",
+        "path": "queries_en/blind_before_after.sql",
+        "query": {
+          "engine": "sqlite",
+          "language": "sql",
+          "sql": "SELECT metric, stage, value, side, improvement, fwhm_drift FROM blind_before_after ORDER BY CASE metric WHEN 'Left continuity CV' THEN 1 WHEN 'Right continuity CV' THEN 2 WHEN 'Left dropout rate' THEN 3 WHEN 'Right dropout rate' THEN 4 ELSE 5 END, CASE stage WHEN 'Before' THEN 1 ELSE 2 END;",
+          "description": "Reads left/right lamellar continuity and dropout before and after blind denoising.",
+          "executed_at": "2026-09-05T07:40:59Z",
+          "tables_used": [
+            "blind_before_after"
+          ],
+          "filters": [
+            "left and right measurement ROIs; before and after blind denoising"
+          ],
+          "metric_definitions": [
+            "continuity CV = standard deviation of row-wise highlight residual around its smooth trend divided by median highlight intensity",
+            "dropout fraction = fraction of rows below 70% of the local highlight trend threshold",
+            "improvement = (before - after) / before"
+          ]
+        }
+      },
+      {
+        "id": "innovation_matrix_sql",
+        "label": "Innovation matrix SQLite query",
+        "path": "queries_en/innovation_matrix.sql",
+        "query": {
+          "engine": "sqlite",
+          "language": "sql",
+          "sql": "SELECT \"order\", innovation, prior_basis, local_contribution, evidence, boundary FROM innovation_matrix ORDER BY \"order\" ASC;",
+          "description": "Reads the innovation-positioning matrix audited against the code and saved results.",
+          "executed_at": "2026-09-05T07:40:59Z",
+          "tables_used": [
+            "innovation_matrix"
+          ],
+          "filters": [
+            "engineering contributions in the current repository"
+          ],
+          "metric_definitions": []
+        }
+      },
+      {
+        "id": "validation_summary_sql",
+        "label": "Validation summary SQLite query",
+        "path": "queries_en/validation_summary.sql",
+        "query": {
+          "engine": "sqlite",
+          "language": "sql",
+          "sql": "SELECT \"order\", metric, observed, threshold, status, interpretation FROM validation_summary ORDER BY \"order\" ASC;",
+          "description": "Reads key guardrail results from blind denoising, quality optimization, and length extension.",
+          "executed_at": "2026-09-05T07:40:59Z",
+          "tables_used": [
+            "validation_summary"
+          ],
+          "filters": [
+            "final selected candidates only"
+          ],
+          "metric_definitions": [
+            "status is pass when the observed value satisfies the threshold executed by the saved code"
+          ]
+        }
+      },
+      {
+        "id": "blind_manifest",
+        "label": "Blind-denoising run manifest",
+        "path": "evidence/run_manifest.json"
+      },
+      {
+        "id": "quality_metrics",
+        "label": "Quality-optimization metrics",
+        "path": "evidence/quality_metrics.json"
+      },
+      {
+        "id": "length_qa",
+        "label": "Length-extension quality checks",
+        "path": "evidence/length_qa.json"
+      },
+      {
+        "id": "code_bundle",
+        "label": "Algorithm implementation",
+        "path": "app"
+      },
+      {
+        "id": "apr_rd",
+        "label": "APR-RD, AAAI 2025",
+        "href": "https://ojs.aaai.org/index.php/AAAI/article/view/32447"
+      },
+      {
+        "id": "foundir_v2",
+        "label": "FoundIR-v2 official code",
+        "href": "https://github.com/cschenxiang/FoundIR-v2"
+      }
+    ],
+    "blocks": [
+      {
+        "id": "title",
+        "type": "markdown",
+        "body": "# Single-Image Self-Supervised Blind Denoising and Fidelity-Preserving Enhancement for Measurable Lamellae"
+      },
+      {
+        "id": "technical_summary",
+        "type": "markdown",
+        "body": "## Technical Summary\n\nThis algorithm addresses the central conflict in a single 16-bit industrial CT image: denoising and sharpening can alter the geometry of the lamellae being measured. Its main contribution is not the direct use of a generic generative model for measurement. Instead, generative visualization is hard-separated from the measurement data, while single-image self-supervision, masked-only ensembles, noise-scale limits, directional continuity enhancement, and geometry guardrails form an auditable measurement-safe pipeline.\n\nFor this image, flat-region high-frequency roughness decreased by **23.03%**, digital edge acutance increased by **5.87%**, and local contrast increased by **3.00%** versus the raw image. Maximum FWHM drift was **2.62%**, ROI SSIM against the blind-denoised baseline was **0.99857**, and 99 of 100 lamellae passed the optional length module's internal checks.\n\n**Evidence level: shareable with caveats.** These are single-image internal-validation results, not external ground-truth accuracy, improved physical scanner resolution, or cross-device generalization."
+      },
+      {
+        "id": "metric_strip",
+        "type": "metric-strip",
+        "cardIds": [
+          "noise_reduction_card",
+          "edge_gain_card",
+          "contrast_gain_card",
+          "geometry_card",
+          "length_pass_card"
+        ]
+      },
+      {
+        "id": "finding_heading",
+        "type": "markdown",
+        "body": "## Continuity Improved Without Material Thickness Drift\n\nBlind denoising reduced within-layer variation and dropout on both sides. All four plotted values are ratios for which lower is better. Their decreases occur while independent FWHM guardrails show width drift of only 0.049% on the left and 0.358% on the right. For this image, the evidence supports the interpretation that the method mainly suppressed discontinuous noise instead of collapsing sheet-like lamellae into sharp lines.",
+        "sourceId": "blind_manifest"
+      },
+      {
+        "id": "blind_chart_block",
+        "type": "chart",
+        "chartId": "blind_before_after_chart"
+      },
+      {
+        "id": "quality_finding",
+        "type": "markdown",
+        "body": "## Automated Search Confined Clarity Gains to Measurement Guardrails\n\nThe quality stage does not choose the visually sharpest candidate. It first rejects any candidate that fails lamella-count, center-displacement, FWHM, flat-region noise, or SSIM limits, then optimizes edge and contrast among the survivors. This image selected `edge_amount=0.32` and `structure_gain=0.06`. Maximum center displacement was 1 px, maximum FWHM change was 2.62%, and flat-region roughness increased by 2.08% versus the blind-denoised baseline, all within their guardrails. Digital acutance gain does not imply better physical scanner resolution.",
+        "sourceId": "quality_metrics"
+      },
+      {
+        "id": "innovation_heading",
+        "type": "markdown",
+        "body": "## The Defensible Innovation Is Measurement-Constrained System Integration\n\nAdjacent replacement, blind-spot prediction, unsharp masking, and subpixel fitting all have established precedents. The defensible contribution in this repository is their integration into a closed loop that explicitly handles 16-bit single-image data, correlated noise, directional lamellae, and measurement risk—and produces rejection evidence on every run. The table separates inherited ideas, repository-specific contributions, current evidence, and claim boundaries so that engineering innovation is not misrepresented as unverified academic priority."
+      },
+      {
+        "id": "innovation_table_block",
+        "type": "table",
+        "tableId": "innovation_table"
+      },
+      {
+        "id": "scope",
+        "type": "markdown",
+        "body": "## Evidence Scope and Metric Definitions\n\nThe input is one 1600 × 2200 uint16 TIFF. Blind-denoising audit metrics are computed separately in the left and right lamellar ROIs: peak count, nearest-neighbor center displacement, median full width at half maximum (FWHM), continuity coefficient of variation (CV) along each lamella, and dropout rate. The quality stage evaluates high-frequency roughness, edge acutance, and local contrast against the raw image, while using the blind-denoised image as the geometry-guardrail baseline. The length module's statistical unit is one visible bright lamella, with 100 rows in total.\n\nContinuity CV is the standard deviation of the row-wise intensity residual around a smooth trend divided by median intensity. Dropout is the fraction of rows below the local trend threshold. “Acutance” is an image-domain gradient metric. “Length pass rate” is the fraction satisfying the pixel-domain stability thresholds implemented in code."
+      },
+      {
+        "id": "method",
+        "type": "markdown",
+        "body": "## Model and Processing Pipeline\n\n### 1. Adjacent-replacement self-supervision\nTraining hides approximately 12% of center pixels, replaces each with one of eight neighboring offsets, and computes Charbonnier loss only at masked positions. A five-layer 3×3 convolutional network with 12 intermediate channels is trained for 600 iterations on the current image.\n\n### 2. Masked-only ensemble inference\nInference performs eight passes with approximately 55% random masking. A prediction contributes to the pixel mean and standard deviation only when that pixel is hidden, avoiding center-value leakage and producing an uncertainty map.\n\n### 3. Data consistency and directional prior\nA high-pass MAD estimate sets the noise scale, and the total per-pixel modification is limited to ±2.75σ. A two-dimensional gradient gate protects strong edges. Continuity enhancement then acts only along the lamella-length direction, while a horizontal Sobel gradient protects thickness boundaries.\n\n### 4. Guardrail-constrained quality optimization\nTwenty edge/structure-gain candidates must pass lamella count, center displacement, FWHM, flat-region noise, and SSIM guardrails before clarity scoring.\n\n### 5. Raw-data-anchored length extension\nThe optional module tracks curved center paths and fits subpixel endpoints. Recommended lengths come from the raw 16-bit path; redetection in the enhanced image is a diagnostic only.",
+        "sourceId": "code_bundle"
+      },
+      {
+        "id": "validation_heading",
+        "type": "markdown",
+        "body": "## Saved Results Pass Configured Guardrails but Do Not Constitute Metrology Certification\n\nKey percentages were independently recomputed from the three saved JSON result files, and the stored guardrail flags for all three stages are true. The table focuses on structural quantities most vulnerable to enhancement artifacts. Automated guardrails can expose major topology or width damage; without external ground truth, they cannot exclude shared bias or blind spots in the detector itself."
+      },
+      {
+        "id": "validation_table_block",
+        "type": "table",
+        "tableId": "validation_table"
+      },
+      {
+        "id": "limitations",
+        "type": "markdown",
+        "body": "## Single-Image Evidence Limits Generalization of the Innovation Claim\n\n- There is no paired clean target, repeat-scan study, or cross-device test; generalization has not been established.\n- The TIFF lacks physical pixel dimensions, and no reference standard or system PSF/MTF is available; millimetre or micrometre accuracy cannot be reported.\n- Multi-mask standard deviation has not been calibrated to physical measurement error and should currently be treated only as a review cue.\n- The implementation borrows APR-RD's adjacent-replacement idea but is not a full reproduction, so it cannot support superiority claims over APR-RD, Blind2Sound, or FoundIR-v2.\n- Parameters and ROIs assume the current lamellar orientation; substantial rotation, curvature, or a different specimen requires a new direction field and new guardrails."
+      },
+      {
+        "id": "next_steps",
+        "type": "markdown",
+        "body": "## The Next Validation Round Should Replace Internal Guardrails with External Accuracy Evidence\n\n1. Acquire at least 20 repeat scans of the same location across exposure, fixture, and temporal variation.\n2. Establish thickness and length ground truth with a reference standard or microscopy and add `mm/pixel` calibration.\n3. Measure PSF/MTF to distinguish digital sharpening from physical resolving power.\n4. Build a blinded set containing missing layers, fusions, fractures, and multiple thicknesses.\n5. Compare BM3D, AP-BSN/Noise2Void, APR-RD, Blind2Sound, and domain-adapted diffusion under one guardrail framework.\n6. Ablate the noise-cap multiplier, directional strength, and guardrail thresholds, then calibrate the uncertainty rejection threshold."
+      },
+      {
+        "id": "questions",
+        "type": "markdown",
+        "body": "## Open Research Questions\n\n- Can adjacent-replacement distance adapt to the measured noise correlation length?\n- Can a local structure tensor replace the fixed vertical direction for curved or rotated lamellae?\n- Is there a transferable calibration between the uncertainty map and actual thickness or endpoint error?\n- When projection-domain or repeat-exposure data become available, can a physics-based forward constraint further reduce bias?\n- Can the guardrails cover topological events such as missing, fused, or fractured lamellae, rather than only peak count and FWHM?"
+      }
+    ]
+  },
+  "snapshot": {
+    "version": 1,
+    "generatedAt": "2026-09-05T07:40:59Z",
+    "status": "ready",
+    "datasets": {
+      "headline_metrics": [
+        {
+          "noise_reduction": 0.23025871759101602,
+          "edge_gain": 0.05865883585981235,
+          "contrast_gain": 0.02999923193109,
+          "max_fwhm_drift": 0.026175325572651675,
+          "quality_ssim": 0.9985747524176588,
+          "length_pass_fraction": 0.99,
+          "image_count": 1,
+          "image_width": 2200,
+          "image_height": 1600,
+          "bit_depth": 16
+        }
+      ],
+      "blind_before_after": [
+        {
+          "metric": "Left continuity CV",
+          "stage": "Before",
+          "value": 0.11295257111926679,
+          "side": "Left",
+          "improvement": 0.3060265261014414,
+          "fwhm_drift": 0.0004893606506481962
+        },
+        {
+          "metric": "Left continuity CV",
+          "stage": "After",
+          "value": 0.07838608816541158,
+          "side": "Left",
+          "improvement": 0.3060265261014414,
+          "fwhm_drift": 0.0004893606506481962
+        },
+        {
+          "metric": "Right continuity CV",
+          "stage": "Before",
+          "value": 0.10950097597727942,
+          "side": "Right",
+          "improvement": 0.27718530722750806,
+          "fwhm_drift": 0.0035829269702096767
+        },
+        {
+          "metric": "Right continuity CV",
+          "stage": "After",
+          "value": 0.07914891430930525,
+          "side": "Right",
+          "improvement": 0.27718530722750806,
+          "fwhm_drift": 0.0035829269702096767
+        },
+        {
+          "metric": "Left dropout rate",
+          "stage": "Before",
+          "value": 0.036585365853658534,
+          "side": "Left",
+          "improvement": 0.5333333333333332,
+          "fwhm_drift": 0.0004893606506481962
+        },
+        {
+          "metric": "Left dropout rate",
+          "stage": "After",
+          "value": 0.01707317073170732,
+          "side": "Left",
+          "improvement": 0.5333333333333332,
+          "fwhm_drift": 0.0004893606506481962
+        },
+        {
+          "metric": "Right dropout rate",
+          "stage": "Before",
+          "value": 0.03048780487804878,
+          "side": "Right",
+          "improvement": 0.76,
+          "fwhm_drift": 0.0035829269702096767
+        },
+        {
+          "metric": "Right dropout rate",
+          "stage": "After",
+          "value": 0.007317073170731708,
+          "side": "Right",
+          "improvement": 0.76,
+          "fwhm_drift": 0.0035829269702096767
+        }
+      ],
+      "innovation_matrix": [
+        {
+          "order": 1,
+          "innovation": "Hard separation of generative and measurement paths",
+          "prior_basis": "Generative restoration and conventional measurement workflows",
+          "local_contribution": "Naming, file flow, and container entry points prevent generated pixels from entering measurement outputs",
+          "evidence": "Generated results are emitted only as VISUAL_ONLY",
+          "boundary": "A safety-architecture contribution, not a new generative model"
+        },
+        {
+          "order": 2,
+          "innovation": "16-bit single-image adjacent-replacement supervision",
+          "prior_basis": "APR-RD and Noise2Self/blind-spot networks",
+          "local_contribution": "Adapts to the current intensity domain, correlated noise, and within-lamella statistics",
+          "evidence": "600 single-image iterations; left/right layer counts unchanged",
+          "boundary": "Not a complete APR-RD reproduction"
+        },
+        {
+          "order": 3,
+          "innovation": "Masked-only prediction ensemble",
+          "prior_basis": "Masked self-supervision and ensemble estimation",
+          "local_contribution": "Uses predictions only when each pixel is hidden and exports their pixelwise standard deviation",
+          "evidence": "Eight masking passes; uncertainty TIFF saved",
+          "boundary": "Standard deviation is not yet a calibrated confidence interval"
+        },
+        {
+          "order": 4,
+          "innovation": "Noise-scale cap with edge gating",
+          "prior_basis": "Robust noise estimation and data consistency",
+          "local_contribution": "Constrains network corrections by ±2.75σ and a gradient gate",
+          "evidence": "Residual cap and structural guardrails are recorded",
+          "boundary": "Cannot guarantee that every subtle defect is unaffected"
+        },
+        {
+          "order": 5,
+          "innovation": "Directional continuity enhancement",
+          "prior_basis": "Anisotropic filtering",
+          "local_contribution": "Smooths along the lamella direction while horizontal Sobel gradients protect thickness boundaries",
+          "evidence": "Continuity improves about 28%–31%; FWHM drift remains below 0.36%",
+          "boundary": "Fixed direction requires adaptation for rotated or curved images"
+        },
+        {
+          "order": 6,
+          "innovation": "Guardrail-constrained automatic parameter search",
+          "prior_basis": "Image-enhancement parameter search",
+          "local_contribution": "Candidates must pass topology, displacement, width, noise, and SSIM limits before clarity comparison",
+          "evidence": "The final quality candidate passes every guardrail",
+          "boundary": "Thresholds are not yet calibrated against external truth"
+        },
+        {
+          "order": 7,
+          "innovation": "Raw-data-anchored measurement",
+          "prior_basis": "Center-path tracking and subpixel endpoints",
+          "local_contribution": "Recommended values come from the raw image; enhanced-image redetection is diagnostic only",
+          "evidence": "99/100 layers pass; the unstable layer is explicitly rejected",
+          "boundary": "Only pixel-domain internal consistency is established"
+        },
+        {
+          "order": 8,
+          "innovation": "Evidence-producing outputs",
+          "prior_basis": "MLOps and quality control",
+          "local_contribution": "Exports 16-bit results, residuals, uncertainty, guardrails, parameters, and weights together",
+          "evidence": "Three JSON manifests and reproducible containers",
+          "boundary": "Auditability is not metrology certification"
+        }
+      ],
+      "validation_summary": [
+        {
+          "order": 1,
+          "metric": "Quality ROI SSIM",
+          "observed": "0.99857",
+          "threshold": ">= 0.985",
+          "status": "Pass",
+          "interpretation": "Quality optimization changes little relative to the blind-denoised baseline"
+        },
+        {
+          "order": 2,
+          "metric": "Maximum lamella-center displacement",
+          "observed": "1 px",
+          "threshold": "<= 1 px",
+          "status": "Pass",
+          "interpretation": "At the guardrail boundary; residuals should still be reviewed"
+        },
+        {
+          "order": 3,
+          "metric": "Maximum median FWHM change",
+          "observed": "2.62%",
+          "threshold": "<= 5%",
+          "status": "Pass",
+          "interpretation": "No material width reconstruction was detected"
+        },
+        {
+          "order": 4,
+          "metric": "Flat-region roughness versus blind baseline",
+          "observed": "+2.08%",
+          "threshold": "<= +3%",
+          "status": "Pass",
+          "interpretation": "Sharpening-related noise reinjection remains within the cap"
+        },
+        {
+          "order": 5,
+          "metric": "Maximum peak-center displacement after blind denoising",
+          "observed": "0 px",
+          "threshold": "<= 1 px",
+          "status": "Pass",
+          "interpretation": "Principal peak positions are preserved"
+        },
+        {
+          "order": 6,
+          "metric": "Length-module pass rate",
+          "observed": "99%",
+          "threshold": ">= 90%",
+          "status": "Pass",
+          "interpretation": "One lamella is explicitly marked for review"
+        },
+        {
+          "order": 7,
+          "metric": "95th percentile length uncertainty",
+          "observed": "0.991 px",
+          "threshold": "Per layer <= 3 px",
+          "status": "Pass",
+          "interpretation": "Pixel-domain repeatability is high, but physical calibration is absent"
+        }
+      ]
+    }
+  },
+  "sources": [
+    {
+      "id": "headline_metrics_sql",
+      "label": "Headline metrics SQLite query",
+      "path": "queries_en/headline_metrics.sql",
+      "query": {
+        "engine": "sqlite",
+        "language": "sql",
+        "sql": "SELECT noise_reduction, edge_gain, contrast_gain, max_fwhm_drift, quality_ssim, length_pass_fraction, image_count, image_width, image_height, bit_depth FROM headline_metrics LIMIT 1;",
+        "description": "Reads report headline metrics materialized after cross-checking the three saved result JSON files.",
+        "executed_at": "2026-09-05T07:40:59Z",
+        "tables_used": [
+          "headline_metrics"
+        ],
+        "filters": [
+          "single reviewed image experiment; no row filtering"
+        ],
+        "metric_definitions": [
+          "headline metrics are recomputed from saved blind, quality and length result JSON files"
+        ]
+      }
+    },
+    {
+      "id": "blind_before_after_sql",
+      "label": "Blind-denoising before/after SQLite query",
+      "path": "queries_en/blind_before_after.sql",
+      "query": {
+        "engine": "sqlite",
+        "language": "sql",
+        "sql": "SELECT metric, stage, value, side, improvement, fwhm_drift FROM blind_before_after ORDER BY CASE metric WHEN 'Left continuity CV' THEN 1 WHEN 'Right continuity CV' THEN 2 WHEN 'Left dropout rate' THEN 3 WHEN 'Right dropout rate' THEN 4 ELSE 5 END, CASE stage WHEN 'Before' THEN 1 ELSE 2 END;",
+        "description": "Reads left/right lamellar continuity and dropout before and after blind denoising.",
+        "executed_at": "2026-09-05T07:40:59Z",
+        "tables_used": [
+          "blind_before_after"
+        ],
+        "filters": [
+          "left and right measurement ROIs; before and after blind denoising"
+        ],
+        "metric_definitions": [
+          "improvement = (before - after) / before"
+        ]
+      }
+    },
+    {
+      "id": "innovation_matrix_sql",
+      "label": "Innovation matrix SQLite query",
+      "path": "queries_en/innovation_matrix.sql",
+      "query": {
+        "engine": "sqlite",
+        "language": "sql",
+        "sql": "SELECT \"order\", innovation, prior_basis, local_contribution, evidence, boundary FROM innovation_matrix ORDER BY \"order\" ASC;",
+        "description": "Reads the innovation-positioning matrix audited against the code and saved results.",
+        "executed_at": "2026-09-05T07:40:59Z",
+        "tables_used": [
+          "innovation_matrix"
+        ],
+        "filters": [
+          "engineering contributions in the current repository"
+        ],
+        "metric_definitions": []
+      }
+    },
+    {
+      "id": "validation_summary_sql",
+      "label": "Validation summary SQLite query",
+      "path": "queries_en/validation_summary.sql",
+      "query": {
+        "engine": "sqlite",
+        "language": "sql",
+        "sql": "SELECT \"order\", metric, observed, threshold, status, interpretation FROM validation_summary ORDER BY \"order\" ASC;",
+        "description": "Reads key guardrail results from blind denoising, quality optimization, and length extension.",
+        "executed_at": "2026-09-05T07:40:59Z",
+        "tables_used": [
+          "validation_summary"
+        ],
+        "filters": [
+          "final selected candidates only"
+        ],
+        "metric_definitions": [
+          "status is pass when the observed value satisfies the threshold executed by the saved code"
+        ]
+      }
+    },
+    {
+      "id": "blind_manifest",
+      "label": "Blind-denoising run manifest",
+      "path": "evidence/run_manifest.json"
+    },
+    {
+      "id": "quality_metrics",
+      "label": "Quality-optimization metrics",
+      "path": "evidence/quality_metrics.json"
+    },
+    {
+      "id": "length_qa",
+      "label": "Length-extension quality checks",
+      "path": "evidence/length_qa.json"
+    },
+    {
+      "id": "code_bundle",
+      "label": "Algorithm implementation",
+      "path": "app"
+    },
+    {
+      "id": "apr_rd",
+      "label": "APR-RD, AAAI 2025",
+      "href": "https://ojs.aaai.org/index.php/AAAI/article/view/32447"
+    },
+    {
+      "id": "foundir_v2",
+      "label": "FoundIR-v2 official code",
+      "href": "https://github.com/cschenxiang/FoundIR-v2"
+    }
+  ]
+}

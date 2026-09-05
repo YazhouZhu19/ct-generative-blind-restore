@@ -1,0 +1,223 @@
+{
+  "artifact": "artifact.json",
+  "database": "report_data.sqlite",
+  "query_directory": "queries",
+  "queries": {
+    "blind_before_after.sql": {
+      "row_count": 8,
+      "rows": [
+        {
+          "metric": "左侧连续性 CV",
+          "stage": "处理前",
+          "value": 0.11295257111926679,
+          "side": "左侧",
+          "improvement": 0.3060265261014414,
+          "fwhm_drift": 0.0004893606506481962
+        },
+        {
+          "metric": "左侧连续性 CV",
+          "stage": "处理后",
+          "value": 0.07838608816541158,
+          "side": "左侧",
+          "improvement": 0.3060265261014414,
+          "fwhm_drift": 0.0004893606506481962
+        },
+        {
+          "metric": "右侧连续性 CV",
+          "stage": "处理前",
+          "value": 0.10950097597727942,
+          "side": "右侧",
+          "improvement": 0.27718530722750806,
+          "fwhm_drift": 0.0035829269702096767
+        },
+        {
+          "metric": "右侧连续性 CV",
+          "stage": "处理后",
+          "value": 0.07914891430930525,
+          "side": "右侧",
+          "improvement": 0.27718530722750806,
+          "fwhm_drift": 0.0035829269702096767
+        },
+        {
+          "metric": "左侧断裂率",
+          "stage": "处理前",
+          "value": 0.036585365853658534,
+          "side": "左侧",
+          "improvement": 0.5333333333333332,
+          "fwhm_drift": 0.0004893606506481962
+        },
+        {
+          "metric": "左侧断裂率",
+          "stage": "处理后",
+          "value": 0.01707317073170732,
+          "side": "左侧",
+          "improvement": 0.5333333333333332,
+          "fwhm_drift": 0.0004893606506481962
+        },
+        {
+          "metric": "右侧断裂率",
+          "stage": "处理前",
+          "value": 0.03048780487804878,
+          "side": "右侧",
+          "improvement": 0.76,
+          "fwhm_drift": 0.0035829269702096767
+        },
+        {
+          "metric": "右侧断裂率",
+          "stage": "处理后",
+          "value": 0.007317073170731708,
+          "side": "右侧",
+          "improvement": 0.76,
+          "fwhm_drift": 0.0035829269702096767
+        }
+      ]
+    },
+    "headline_metrics.sql": {
+      "row_count": 1,
+      "rows": [
+        {
+          "noise_reduction": 0.23025871759101602,
+          "edge_gain": 0.05865883585981235,
+          "contrast_gain": 0.02999923193109,
+          "max_fwhm_drift": 0.026175325572651675,
+          "quality_ssim": 0.9985747524176588,
+          "length_pass_fraction": 0.99,
+          "image_count": 1,
+          "image_width": 2200,
+          "image_height": 1600,
+          "bit_depth": 16
+        }
+      ]
+    },
+    "innovation_matrix.sql": {
+      "row_count": 8,
+      "rows": [
+        {
+          "order": 1,
+          "innovation": "生成式/测量链路硬隔离",
+          "prior_basis": "生成式恢复与传统测量工作流",
+          "local_contribution": "命名、文件流和容器入口阻止生成像素进入测量输出",
+          "evidence": "生成结果仅输出为 VISUAL_ONLY",
+          "boundary": "属于安全架构创新，不是新生成模型"
+        },
+        {
+          "order": 2,
+          "innovation": "16 位单图相邻替换自监督",
+          "prior_basis": "APR-RD、Noise2Self/盲点网络",
+          "local_contribution": "适配当前灰度域、相关噪声与片层内部统计",
+          "evidence": "600 次单图训练；左右层数不变",
+          "boundary": "不是 APR-RD 完整复现"
+        },
+        {
+          "order": 3,
+          "innovation": "隐藏条件预测集成",
+          "prior_basis": "掩膜自监督与集成估计",
+          "local_contribution": "仅统计像素被隐藏时的预测并输出逐像素标准差",
+          "evidence": "8 次掩膜；保存 uncertainty TIFF",
+          "boundary": "标准差尚未校准为置信区间"
+        },
+        {
+          "order": 4,
+          "innovation": "噪声尺度限幅与边缘门控",
+          "prior_basis": "鲁棒噪声估计、数据一致性",
+          "local_contribution": "网络修正受 ±2.75σ 与梯度门共同约束",
+          "evidence": "残差上限与结构守卫均记录",
+          "boundary": "不能保证所有微小缺陷都不受影响"
+        },
+        {
+          "order": 5,
+          "innovation": "方向性连续化",
+          "prior_basis": "各向异性滤波",
+          "local_contribution": "沿片层延伸方向平滑、横向 Sobel 保护厚度边界",
+          "evidence": "连续性降低约 28%–31%；FWHM 漂移小于 0.36%",
+          "boundary": "固定方向需对旋转/弯曲图适配"
+        },
+        {
+          "order": 6,
+          "innovation": "守卫约束的自动参数搜索",
+          "prior_basis": "图像增强参数搜索",
+          "local_contribution": "候选先满足拓扑、位移、宽度、噪声和 SSIM，再比较清晰度",
+          "evidence": "最终质量候选全部守卫通过",
+          "boundary": "阈值尚未由外部真值标定"
+        },
+        {
+          "order": 7,
+          "innovation": "原始数据锚定测量",
+          "prior_basis": "中心路径跟踪与亚像素端点",
+          "local_contribution": "推荐值来自原图；增强重检测仅作诊断",
+          "evidence": "99/100 层通过，异常层单独拒判",
+          "boundary": "只有像素级内部一致性"
+        },
+        {
+          "order": 8,
+          "innovation": "证据化输出",
+          "prior_basis": "MLOps 与质量控制",
+          "local_contribution": "同步输出 16 位结果、残差、不确定性、守卫、参数和权重",
+          "evidence": "三个 JSON 清单和可复现容器",
+          "boundary": "审计性不等于计量认证"
+        }
+      ]
+    },
+    "validation_summary.sql": {
+      "row_count": 7,
+      "rows": [
+        {
+          "order": 1,
+          "metric": "质量 ROI SSIM",
+          "observed": "0.99857",
+          "threshold": ">= 0.985",
+          "status": "通过",
+          "interpretation": "质量优化相对盲去噪基线变化很小"
+        },
+        {
+          "order": 2,
+          "metric": "最大片层中心位移",
+          "observed": "1 px",
+          "threshold": "<= 1 px",
+          "status": "通过",
+          "interpretation": "达到守卫边界，应继续人工看残差"
+        },
+        {
+          "order": 3,
+          "metric": "最大中位 FWHM 变化",
+          "observed": "2.62%",
+          "threshold": "<= 5%",
+          "status": "通过",
+          "interpretation": "未检测到明显宽度重构"
+        },
+        {
+          "order": 4,
+          "metric": "平坦区起伏相对盲去噪基线",
+          "observed": "+2.08%",
+          "threshold": "<= +3%",
+          "status": "通过",
+          "interpretation": "锐化回注噪声仍在上限内"
+        },
+        {
+          "order": 5,
+          "metric": "盲去噪左右峰中心最大位移",
+          "observed": "0 px",
+          "threshold": "<= 1 px",
+          "status": "通过",
+          "interpretation": "主要峰位置保持"
+        },
+        {
+          "order": 6,
+          "metric": "长度模块通过率",
+          "observed": "99%",
+          "threshold": ">= 90%",
+          "status": "通过",
+          "interpretation": "1 条层纹被明确标记复核"
+        },
+        {
+          "order": 7,
+          "metric": "长度不确定度 95% 分位",
+          "observed": "0.991 px",
+          "threshold": "单层 <= 3 px",
+          "status": "通过",
+          "interpretation": "内部像素重复性较高，但无物理标定"
+        }
+      ]
+    }
+  }
+}

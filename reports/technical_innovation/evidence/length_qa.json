@@ -1,0 +1,112 @@
+{
+  "source": {
+    "path": "outputs/ct_generative_blind_restore/input/source_16bit.tif",
+    "shape": [
+      1600,
+      2200
+    ],
+    "dtype": "uint16",
+    "min": 0,
+    "max": 65535,
+    "integer_scale": 65535.0
+  },
+  "denoised": {
+    "path": "outputs/ct_generative_blind_restore/results/MEASUREMENT_blind_denoised_16bit.tif",
+    "shape": [
+      1600,
+      2200
+    ],
+    "dtype": "uint16",
+    "min": 0,
+    "max": 65535,
+    "integer_scale": 65535.0
+  },
+  "refinement": {
+    "sharpen_amount": 0.24,
+    "sharpen_sigma": 0.9,
+    "raw_anchor_endpoint_weight_max": 1.0,
+    "raw_anchor_lateral_weight_max": 0.2,
+    "raw_anchor_endpoint_ranges": [
+      [
+        600,
+        790
+      ],
+      [
+        1010,
+        1240
+      ]
+    ],
+    "estimated_noise_sigma_normalized": 0.008375490922411783,
+    "change_cap_normalized": 0.023032600036632406,
+    "operation": "symmetric Gaussian unsharp; zero phase; endpoint raw anchoring"
+  },
+  "rois": {
+    "refine": {
+      "y0": 600,
+      "y1": 1230,
+      "x0": 320,
+      "x1": 1880
+    },
+    "left_body": {
+      "y0": 720,
+      "y1": 1060,
+      "x0": 370,
+      "x1": 970
+    },
+    "right_body": {
+      "y0": 720,
+      "y1": 1060,
+      "x0": 1220,
+      "x1": 1830
+    },
+    "top_range": [
+      600,
+      790
+    ],
+    "bottom_range": [
+      1010,
+      1240
+    ]
+  },
+  "pixel_calibration": {
+    "pixel_size": null,
+    "unit": null,
+    "absolute_length_available": false
+  },
+  "layer_count": 100,
+  "pass_count": 99,
+  "review_count": 1,
+  "pass_fraction": 0.99,
+  "refine_roi_ssim_vs_source": 0.9963881398616291,
+  "endpoint_shift_abs_median_px": 0.01195,
+  "endpoint_shift_abs_p95_px": 0.0894899999999999,
+  "endpoint_shift_abs_max_px": 2.3235,
+  "length_delta_abs_median_px": 0.01625,
+  "length_delta_abs_p95_px": 0.23118999999999978,
+  "length_delta_abs_max_px": 2.3301,
+  "length_uncertainty_median_px": 0.369,
+  "length_uncertainty_p95_px": 0.99085,
+  "edge_snr_median_source": 74.549,
+  "edge_snr_median_enhanced": 77.145,
+  "edge_snr_median_gain": 1.034822734040698,
+  "edge_gradient_gain_same_coordinate_median": 1.0219,
+  "edge_gradient_gain_same_coordinate_p05": 1.0091400000000001,
+  "guardrails": {
+    "per_layer_top_shift_abs_max_px": 0.75,
+    "per_layer_bottom_shift_abs_max_px": 0.75,
+    "per_layer_length_delta_abs_max_px": 1.0,
+    "edge_snr_min": 4.0,
+    "length_uncertainty_max_px": 3.0,
+    "required_pass_fraction": 0.9,
+    "refine_roi_ssim_min": 0.99,
+    "edge_gradient_gain_median_min": 1.0
+  },
+  "guardrail_pass": true,
+  "data_quality": {
+    "native_bit_depth": 16,
+    "x_resolution_tag": null,
+    "y_resolution_tag": null,
+    "resolution_unit_tag": null,
+    "absolute_accuracy_status": "blocked_without_pixel_size_and_system_PSF_calibration"
+  }
+}

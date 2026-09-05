@@ -1,0 +1,223 @@
+{
+  "artifact": "artifact_en.json",
+  "database": "report_data_en.sqlite",
+  "query_directory": "queries_en",
+  "queries": {
+    "blind_before_after.sql": {
+      "row_count": 8,
+      "rows": [
+        {
+          "metric": "Left continuity CV",
+          "stage": "Before",
+          "value": 0.11295257111926679,
+          "side": "Left",
+          "improvement": 0.3060265261014414,
+          "fwhm_drift": 0.0004893606506481962
+        },
+        {
+          "metric": "Left continuity CV",
+          "stage": "After",
+          "value": 0.07838608816541158,
+          "side": "Left",
+          "improvement": 0.3060265261014414,
+          "fwhm_drift": 0.0004893606506481962
+        },
+        {
+          "metric": "Right continuity CV",
+          "stage": "Before",
+          "value": 0.10950097597727942,
+          "side": "Right",
+          "improvement": 0.27718530722750806,
+          "fwhm_drift": 0.0035829269702096767
+        },
+        {
+          "metric": "Right continuity CV",
+          "stage": "After",
+          "value": 0.07914891430930525,
+          "side": "Right",
+          "improvement": 0.27718530722750806,
+          "fwhm_drift": 0.0035829269702096767
+        },
+        {
+          "metric": "Left dropout rate",
+          "stage": "Before",
+          "value": 0.036585365853658534,
+          "side": "Left",
+          "improvement": 0.5333333333333332,
+          "fwhm_drift": 0.0004893606506481962
+        },
+        {
+          "metric": "Left dropout rate",
+          "stage": "After",
+          "value": 0.01707317073170732,
+          "side": "Left",
+          "improvement": 0.5333333333333332,
+          "fwhm_drift": 0.0004893606506481962
+        },
+        {
+          "metric": "Right dropout rate",
+          "stage": "Before",
+          "value": 0.03048780487804878,
+          "side": "Right",
+          "improvement": 0.76,
+          "fwhm_drift": 0.0035829269702096767
+        },
+        {
+          "metric": "Right dropout rate",
+          "stage": "After",
+          "value": 0.007317073170731708,
+          "side": "Right",
+          "improvement": 0.76,
+          "fwhm_drift": 0.0035829269702096767
+        }
+      ]
+    },
+    "headline_metrics.sql": {
+      "row_count": 1,
+      "rows": [
+        {
+          "noise_reduction": 0.23025871759101602,
+          "edge_gain": 0.05865883585981235,
+          "contrast_gain": 0.02999923193109,
+          "max_fwhm_drift": 0.026175325572651675,
+          "quality_ssim": 0.9985747524176588,
+          "length_pass_fraction": 0.99,
+          "image_count": 1,
+          "image_width": 2200,
+          "image_height": 1600,
+          "bit_depth": 16
+        }
+      ]
+    },
+    "innovation_matrix.sql": {
+      "row_count": 8,
+      "rows": [
+        {
+          "order": 1,
+          "innovation": "Hard separation of generative and measurement paths",
+          "prior_basis": "Generative restoration and conventional measurement workflows",
+          "local_contribution": "Naming, file flow, and container entry points prevent generated pixels from entering measurement outputs",
+          "evidence": "Generated results are emitted only as VISUAL_ONLY",
+          "boundary": "A safety-architecture contribution, not a new generative model"
+        },
+        {
+          "order": 2,
+          "innovation": "16-bit single-image adjacent-replacement supervision",
+          "prior_basis": "APR-RD and Noise2Self/blind-spot networks",
+          "local_contribution": "Adapts to the current intensity domain, correlated noise, and within-lamella statistics",
+          "evidence": "600 single-image iterations; left/right layer counts unchanged",
+          "boundary": "Not a complete APR-RD reproduction"
+        },
+        {
+          "order": 3,
+          "innovation": "Masked-only prediction ensemble",
+          "prior_basis": "Masked self-supervision and ensemble estimation",
+          "local_contribution": "Uses predictions only when each pixel is hidden and exports their pixelwise standard deviation",
+          "evidence": "Eight masking passes; uncertainty TIFF saved",
+          "boundary": "Standard deviation is not yet a calibrated confidence interval"
+        },
+        {
+          "order": 4,
+          "innovation": "Noise-scale cap with edge gating",
+          "prior_basis": "Robust noise estimation and data consistency",
+          "local_contribution": "Constrains network corrections by ±2.75σ and a gradient gate",
+          "evidence": "Residual cap and structural guardrails are recorded",
+          "boundary": "Cannot guarantee that every subtle defect is unaffected"
+        },
+        {
+          "order": 5,
+          "innovation": "Directional continuity enhancement",
+          "prior_basis": "Anisotropic filtering",
+          "local_contribution": "Smooths along the lamella direction while horizontal Sobel gradients protect thickness boundaries",
+          "evidence": "Continuity improves about 28%–31%; FWHM drift remains below 0.36%",
+          "boundary": "Fixed direction requires adaptation for rotated or curved images"
+        },
+        {
+          "order": 6,
+          "innovation": "Guardrail-constrained automatic parameter search",
+          "prior_basis": "Image-enhancement parameter search",
+          "local_contribution": "Candidates must pass topology, displacement, width, noise, and SSIM limits before clarity comparison",
+          "evidence": "The final quality candidate passes every guardrail",
+          "boundary": "Thresholds are not yet calibrated against external truth"
+        },
+        {
+          "order": 7,
+          "innovation": "Raw-data-anchored measurement",
+          "prior_basis": "Center-path tracking and subpixel endpoints",
+          "local_contribution": "Recommended values come from the raw image; enhanced-image redetection is diagnostic only",
+          "evidence": "99/100 layers pass; the unstable layer is explicitly rejected",
+          "boundary": "Only pixel-domain internal consistency is established"
+        },
+        {
+          "order": 8,
+          "innovation": "Evidence-producing outputs",
+          "prior_basis": "MLOps and quality control",
+          "local_contribution": "Exports 16-bit results, residuals, uncertainty, guardrails, parameters, and weights together",
+          "evidence": "Three JSON manifests and reproducible containers",
+          "boundary": "Auditability is not metrology certification"
+        }
+      ]
+    },
+    "validation_summary.sql": {
+      "row_count": 7,
+      "rows": [
+        {
+          "order": 1,
+          "metric": "Quality ROI SSIM",
+          "observed": "0.99857",
+          "threshold": ">= 0.985",
+          "status": "Pass",
+          "interpretation": "Quality optimization changes little relative to the blind-denoised baseline"
+        },
+        {
+          "order": 2,
+          "metric": "Maximum lamella-center displacement",
+          "observed": "1 px",
+          "threshold": "<= 1 px",
+          "status": "Pass",
+          "interpretation": "At the guardrail boundary; residuals should still be reviewed"
+        },
+        {
+          "order": 3,
+          "metric": "Maximum median FWHM change",
+          "observed": "2.62%",
+          "threshold": "<= 5%",
+          "status": "Pass",
+          "interpretation": "No material width reconstruction was detected"
+        },
+        {
+          "order": 4,
+          "metric": "Flat-region roughness versus blind baseline",
+          "observed": "+2.08%",
+          "threshold": "<= +3%",
+          "status": "Pass",
+          "interpretation": "Sharpening-related noise reinjection remains within the cap"
+        },
+        {
+          "order": 5,
+          "metric": "Maximum peak-center displacement after blind denoising",
+          "observed": "0 px",
+          "threshold": "<= 1 px",
+          "status": "Pass",
+          "interpretation": "Principal peak positions are preserved"
+        },
+        {
+          "order": 6,
+          "metric": "Length-module pass rate",
+          "observed": "99%",
+          "threshold": ">= 90%",
+          "status": "Pass",
+          "interpretation": "One lamella is explicitly marked for review"
+        },
+        {
+          "order": 7,
+          "metric": "95th percentile length uncertainty",
+          "observed": "0.991 px",
+          "threshold": "Per layer <= 3 px",
+          "status": "Pass",
+          "interpretation": "Pixel-domain repeatability is high, but physical calibration is absent"
+        }
+      ]
+    }
+  }
+}

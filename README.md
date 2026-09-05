@@ -2,6 +2,15 @@
 
 完整原理、公式、参数、QA 和代码结构见 `METHOD_AND_CODE_GUIDE.md`。
 
+## 双语技术创新报告 / Bilingual technical report
+
+- 中文 Markdown：[`reports/technical_innovation/TECHNICAL_INNOVATION_REPORT.md`](reports/technical_innovation/TECHNICAL_INNOVATION_REPORT.md)
+- English Markdown: [`reports/technical_innovation/TECHNICAL_INNOVATION_REPORT_EN.md`](reports/technical_innovation/TECHNICAL_INNOVATION_REPORT_EN.md)
+- 中文自包含 HTML：[`reports/technical_innovation/TECHNICAL_INNOVATION_REPORT.html`](reports/technical_innovation/TECHNICAL_INNOVATION_REPORT.html)
+- English self-contained HTML: [`reports/technical_innovation/TECHNICAL_INNOVATION_REPORT_EN.html`](reports/technical_innovation/TECHNICAL_INNOVATION_REPORT_EN.html)
+
+报告目录还包含可复现的中英文 `artifact*.json`、SQLite 数据快照、SQL 查询、验证回执和三份只含数值的实验清单。原始 CT、参考图、增强图与模型权重继续由 `.gitignore` 排除，避免上传可能敏感或体积较大的图像数据。
+
 > 数据安全：本仓库只保存代码、容器配置和技术文档。原始 TIFF、参考图、生成图、模型权重及运行结果由 `.gitignore` 排除，请通过只读挂载或本地目录提供。
 
 工程仍保留两类输出能力，但本轮默认只运行保真盲去噪链路：
