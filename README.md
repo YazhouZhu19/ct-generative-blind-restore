@@ -1,57 +1,76 @@
-# 16 位 CT：自监督盲去噪 + 保真边缘增强容器
+# 16-Bit CT Self-Supervised Blind Denoising and Fidelity-Preserving Enhancement
 
-完整原理、公式、参数、QA 和代码结构见 `METHOD_AND_CODE_GUIDE.md`。
+This repository contains a containerized workflow for single-image self-supervised blind denoising, measurement-aware edge enhancement, and optional lamella-length analysis on 16-bit industrial CT/X-ray images.
 
-## 双语技术创新报告 / Bilingual technical report
+For the full method, equations, parameters, quality assurance, and code structure, see [`METHOD_AND_CODE_GUIDE.md`](METHOD_AND_CODE_GUIDE.md).
 
-- 中文 Markdown：[`reports/technical_innovation/TECHNICAL_INNOVATION_REPORT.md`](reports/technical_innovation/TECHNICAL_INNOVATION_REPORT.md)
-- English Markdown: [`reports/technical_innovation/TECHNICAL_INNOVATION_REPORT_EN.md`](reports/technical_innovation/TECHNICAL_INNOVATION_REPORT_EN.md)
-- 中文自包含 HTML：[`reports/technical_innovation/TECHNICAL_INNOVATION_REPORT.html`](reports/technical_innovation/TECHNICAL_INNOVATION_REPORT.html)
-- English self-contained HTML: [`reports/technical_innovation/TECHNICAL_INNOVATION_REPORT_EN.html`](reports/technical_innovation/TECHNICAL_INNOVATION_REPORT_EN.html)
+## Bilingual Technical Innovation Reports
 
-报告目录还包含可复现的中英文 `artifact*.json`、SQLite 数据快照、SQL 查询、验证回执和三份只含数值的实验清单。原始 CT、参考图、增强图与模型权重继续由 `.gitignore` 排除，避免上传可能敏感或体积较大的图像数据。
+- [English Markdown report](reports/technical_innovation/TECHNICAL_INNOVATION_REPORT_EN.md)
+- [English self-contained HTML report](reports/technical_innovation/TECHNICAL_INNOVATION_REPORT_EN.html)
+- [Chinese Markdown report](reports/technical_innovation/TECHNICAL_INNOVATION_REPORT.md)
+- [Chinese self-contained HTML report](reports/technical_innovation/TECHNICAL_INNOVATION_REPORT.html)
 
-> 数据安全：本仓库只保存代码、容器配置和技术文档。原始 TIFF、参考图、生成图、模型权重及运行结果由 `.gitignore` 排除，请通过只读挂载或本地目录提供。
+The report directory also contains reproducible Chinese and English `artifact*.json` files, SQLite snapshots, source SQL, validation receipts, and three numeric-only experiment manifests.
 
-工程仍保留两类输出能力，但本轮默认只运行保真盲去噪链路：
+> **Data safety:** this repository contains code, container configuration, technical documentation, and numeric validation evidence only. Raw TIFF files, reference images, generated/enhanced images, model weights, and runtime result directories are excluded by `.gitignore`. Provide image data locally or through read-only mounts.
 
-1. `GENERATIVE_*`：生成式视觉候选及其后处理结果，只用于观察清晰度方向，禁止测厚、缺陷判定或当作真值。
-2. `MEASUREMENT_*`：单图自监督盲去噪结果。采用 APR-RD 思路中的相邻像素替换、Noise2Self 掩膜预测、多次掩膜不确定性，以及边缘/数据一致性门控；输出残差和不确定性图。
+## Measurement-Safety Architecture
 
-当前实现是为本张 16 位灰度图做的工程化适配，不声称复现完整 APR-RD、Blind2Sound 或 FoundIR-v2。参考 JPG 不参与像素级训练。
+The project preserves two deliberately separated output domains:
 
-## 当前质量优化流程
+1. `GENERATIVE_*` contains generative visual candidates and deterministic post-processing outputs. These files are for visual exploration only and must not be used for thickness measurement, defect acceptance, or ground truth.
+2. `MEASUREMENT_*` contains outputs derived from the original 16-bit image through adjacent-pixel replacement, Noise2Self-style masked prediction, multi-mask uncertainty estimation, and edge/data-consistency gating. Residual and uncertainty maps are emitted for audit.
 
-本轮不执行层纹长度测量。先运行原有单图自监督盲去噪模型，再执行受限的方向性边缘与局部对比增强：
+No generated pixel is allowed into the `MEASUREMENT_*` pipeline. The reference JPEG is not used as a pixel-level training target.
+
+This implementation is an engineering adaptation for the supplied 16-bit grayscale image. It does not claim to reproduce the complete APR-RD, Blind2Sound, or FoundIR-v2 methods.
+
+## Recommended Quality-Optimization Workflow
+
+Run the single-image blind denoiser first, followed by constrained directional edge and local-contrast enhancement:
 
 ```bash
 docker compose run --rm ct-restore-cpu
 docker compose run --rm ct-quality
 ```
 
-`ct-quality` 会自动搜索边缘增益和结构增益参数，并以层数稳定、层中心位移、FWHM、平坦区高频起伏及 SSIM 为守卫条件。首选结果是 `results_quality/QUALITY_balanced_16bit.tif`，它保持 2200 x 1600、16 位灰度且不含生成式像素。
+`ct-quality` searches edge-gain and structure-gain parameters automatically. Candidates must satisfy guardrails for lamella-count stability, center displacement, FWHM change, flat-region high-frequency roughness, and SSIM before being ranked for clarity.
 
-## 输出说明
+The recommended result is:
 
-- `MEASUREMENT_blind_denoised_16bit.tif`：唯一可进入后续标定/测量验证的候选。
-- `MEASUREMENT_residual_float32.tif`：处理结果减原始观测，检查是否误删结构。
-- `MEASUREMENT_uncertainty_float32.tif`：多掩膜预测标准差，高值区域应人工复核。
-- `run_manifest.json`：方法、参数、层纹数量/FWHM/位移/SSIM 守卫指标。
-- `GENERATIVE_visual_only_postprocessed*.{png,tif}`：生成式视觉结果，严禁测量。
-- `comparison.png`：原图、保真盲去噪、生成式视觉候选对比。
-- `results_quality/QUALITY_balanced_16bit.tif`：本轮面向清晰边缘、整体质量和去噪的首选完整图。
-- `results_quality/QUALITY_balanced_preview.png`：首选完整图的 8 位预览。
-- `results_quality/QUALITY_display_only.png`：仅用于观看的局部对比映射，不保留定量灰度。
-- `results_quality/QUALITY_comparison.png`：原图、上一版盲去噪、本轮优化及显示版的层纹区域放大对比。
-- `results_quality/quality_metrics.json`：参数搜索、质量增益和结构守卫指标。
+```text
+results_quality/QUALITY_balanced_16bit.tif
+```
 
-## Docker CPU（Mac/无 NVIDIA GPU）
+It retains the original 2200 × 1600 dimensions and 16-bit grayscale representation and contains no generative pixels.
+
+## Output Reference
+
+### Blind-Denoising Outputs
+
+- `results/MEASUREMENT_blind_denoised_16bit.tif` — the only denoised candidate eligible for subsequent calibration and measurement validation.
+- `results/MEASUREMENT_residual_float32.tif` — processed result minus the raw observation; inspect it for removed structure.
+- `results/MEASUREMENT_uncertainty_float32.tif` — standard deviation across masked predictions; high-value regions require review.
+- `results/run_manifest.json` — method, parameters, lamella count, FWHM, displacement, SSIM, and guardrail results.
+- `results/GENERATIVE_visual_only_postprocessed*.{png,tif}` — visual-only generative results; never use them for measurement.
+- `results/comparison.png` — raw, measurement-safe denoised, and generative visual candidates side by side.
+
+### Quality-Optimization Outputs
+
+- `results_quality/QUALITY_balanced_16bit.tif` — preferred full-resolution result for edge clarity, overall quality, and denoising.
+- `results_quality/QUALITY_balanced_preview.png` — 8-bit preview of the preferred result.
+- `results_quality/QUALITY_display_only.png` — local-contrast display mapping; quantitative intensities are not preserved.
+- `results_quality/QUALITY_comparison.png` — enlarged comparison of the raw image, blind-denoised baseline, optimized result, and display-only version.
+- `results_quality/quality_metrics.json` — parameter search, quality gains, and structural guardrails.
+
+## Docker CPU: macOS or Hosts Without NVIDIA GPUs
 
 ```bash
 docker compose run --rm ct-restore-cpu
 ```
 
-或：
+Equivalent manual commands:
 
 ```bash
 docker build -f Dockerfile.cpu -t ct-generative-blind-restore:cpu .
@@ -63,32 +82,32 @@ docker run --rm \
   --outdir /data/results --device cpu
 ```
 
-## Docker CUDA（NVIDIA 主机）
+## Docker CUDA: NVIDIA Hosts
 
-需要 NVIDIA Container Toolkit：
+NVIDIA Container Toolkit is required:
 
 ```bash
 docker compose --profile cuda run --rm ct-restore-cuda
 ```
 
-默认 600 次单图训练；快速验证可在命令末尾加 `--iterations 120 --passes 4`。生产复核建议至少 600 次并查看 `guardrail_pass`、残差图和不确定性图。
+The default run performs 600 single-image training iterations. For a quick smoke test, append `--iterations 120 --passes 4`. Production review should use at least 600 iterations and inspect `guardrail_pass`, the residual image, and the uncertainty map.
 
-## 已保留但本轮不启用：长度优化与逐层测量
+## Optional Length Optimization and Per-Lamella Measurement
 
-只有后续重新需要长度研究时，才在盲去噪后运行：
+The length module is retained but is not part of the default quality workflow. Run it only when length analysis is required, after blind denoising:
 
 ```bash
 docker compose run --rm ct-length
 ```
 
-长度阶段会保护上下端点、执行受限的零相位对称锐化、逐行跟踪每条弯曲层纹的中心路径，并沿路径拟合亚像素端点。输出位于 `results_length/`：
+The module protects the upper and lower endpoints, performs bounded zero-phase symmetric sharpening, tracks the curved center path of each lamella row by row, and fits subpixel endpoints along that path. Its outputs are written to `results_length/`:
 
-- `MEASUREMENT_length_optimized_16bit.tif`：长度测量视觉候选；
-- `layer_lengths.csv`：每条层纹的推荐像素长度、端点、内部不确定度及质量标志；
-- `layer_length_overlay_roi.png`：绿色为通过，红色为人工复核；
-- `length_qa.json`：整体准确性与数据质量检查。
+- `MEASUREMENT_length_optimized_16bit.tif` — visual candidate for length inspection.
+- `layer_lengths.csv` — recommended pixel length, endpoints, internal uncertainty, and quality flag for each lamella.
+- `layer_length_overlay_roi.png` — green indicates pass; red indicates manual review.
+- `length_qa.json` — aggregate accuracy and data-quality checks.
 
-如果已经获得经标准件标定的像素尺寸，例如每像素 `0.012 mm`，可直接运行：
+If a reference standard provides a calibrated pixel size—for example, `0.012 mm` per pixel—run:
 
 ```bash
 docker compose run --rm --entrypoint python ct-restore-cpu \
@@ -99,14 +118,16 @@ docker compose run --rm --entrypoint python ct-restore-cpu \
   --pixel-size 0.012 --unit mm
 ```
 
-不得从 TIFF 的显示尺寸推断像素物理尺寸；当前文件没有 XResolution、YResolution 或 ResolutionUnit 标记。
+Do not infer physical pixel size from the displayed TIFF dimensions. The current source file contains no XResolution, YResolution, or ResolutionUnit metadata.
 
-## 为什么没有直接把 FoundIR-v2 当作测量图
+## Why FoundIR-v2 Is Not Used as the Measurement Image
 
-FoundIR-v2 使用 SDXL、LLaVA 等大模型依赖，官方推理脚本面向一到两张 CUDA GPU。它是通用图像恢复模型，并非针对当前工业 CT、16 位强度或本设备 PSF 标定训练。它可以产生非常清晰的层纹，但清晰不等于真实；新增、删除或移动一层都会使厚度结论失效。
+FoundIR-v2 relies on large-model components such as SDXL and LLaVA, and its official inference workflow targets one or two CUDA GPUs. It is a general image-restoration model rather than a system calibrated for this industrial CT modality, 16-bit intensity domain, or scanner PSF.
 
-因此本工程允许把任意生成式结果放入 `--generated` 做视觉后处理，却永远不会把它混入 `MEASUREMENT_*` 链路。
+It may produce exceptionally clear-looking lamellae, but visual clarity is not measurement truth. Adding, deleting, duplicating, or moving even one layer invalidates thickness conclusions. The project therefore accepts an arbitrary generative result through `--generated` for visual-only post-processing, but never mixes it into a `MEASUREMENT_*` output.
 
-## 本机验证边界
+## Validation Environment and Limits
 
-交付机器为 Apple Silicon 8 GB，且未安装 Docker/Podman/OrbStack。因此镜像文件已经生成，但本机不能构建镜像；核心脚本使用同一依赖的本机 PyTorch CPU 环境执行验证。换到有 Docker 的机器即可复跑。
+The original delivery host was an 8 GB Apple Silicon machine without Docker, Podman, or OrbStack. Container definitions were generated, while the core scripts were validated with a local PyTorch CPU environment using the same dependency set. The workflow can be rerun directly on a Docker-capable machine.
+
+The saved experiment is a single-image internal validation, not a cross-device benchmark or metrology certification. Absolute millimetre or micrometre accuracy still requires calibrated pixel size, a reference standard, and system PSF/MTF characterization.
