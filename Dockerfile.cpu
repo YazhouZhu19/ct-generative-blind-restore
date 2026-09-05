@@ -1,0 +1,12 @@
+FROM python:3.11-slim-bookworm
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    OMP_NUM_THREADS=6
+
+WORKDIR /workspace
+COPY requirements-common.txt requirements-cpu.txt ./
+RUN pip install --no-cache-dir -r requirements-cpu.txt
+COPY app ./app
+
+ENTRYPOINT ["python", "app/pipeline.py"]

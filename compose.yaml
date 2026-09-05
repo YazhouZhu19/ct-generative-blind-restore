@@ -1,0 +1,70 @@
+services:
+  ct-restore-cpu:
+    build:
+      context: .
+      dockerfile: Dockerfile.cpu
+    image: ct-generative-blind-restore:cpu
+    volumes:
+      - ./input:/data/input:ro
+      - ./results:/data/results
+    command:
+      - --input
+      - /data/input/source_16bit.tif
+      - --outdir
+      - /data/results
+      - --device
+      - cpu
+
+  ct-restore-cuda:
+    profiles: ["cuda"]
+    build:
+      context: .
+      dockerfile: Dockerfile.cuda
+    image: ct-generative-blind-restore:cuda
+    gpus: all
+    volumes:
+      - ./input:/data/input:ro
+      - ./results:/data/results
+    command:
+      - --input
+      - /data/input/source_16bit.tif
+      - --outdir
+      - /data/results
+      - --device
+      - cuda
+
+  ct-length:
+    build:
+      context: .
+      dockerfile: Dockerfile.cpu
+    image: ct-generative-blind-restore:cpu
+    entrypoint: ["python", "app/length_optimize.py"]
+    volumes:
+      - ./input:/data/input:ro
+      - ./results:/data/results:ro
+      - ./results_length:/data/results_length
+    command:
+      - --source
+      - /data/input/source_16bit.tif
+      - --denoised
+      - /data/results/MEASUREMENT_blind_denoised_16bit.tif
+      - --outdir
+      - /data/results_length
+
+  ct-quality:
+    build:
+      context: .
+      dockerfile: Dockerfile.cpu
+    image: ct-generative-blind-restore:cpu
+    entrypoint: ["python", "app/quality_optimize.py"]
+    volumes:
+      - ./input:/data/input:ro
+      - ./results:/data/results:ro
+      - ./results_quality:/data/results_quality
+    command:
+      - --source
+      - /data/input/source_16bit.tif
+      - --baseline
+      - /data/results/MEASUREMENT_blind_denoised_16bit.tif
+      - --outdir
+      - /data/results_quality

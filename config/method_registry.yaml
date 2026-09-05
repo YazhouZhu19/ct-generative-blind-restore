@@ -1,0 +1,28 @@
+measurement_candidates:
+  - name: APR-RD
+    venue: AAAI 2025
+    role: correlated-real-noise self-supervised denoising
+    selected_for_local_adaptation: true
+    note: The runnable pipeline borrows adjacent-pixel replacement, but is not the full paper implementation.
+  - name: Blind2Sound
+    venue: ICCV 2025
+    role: self-supervised blind denoising without residual noise
+    selected_for_local_adaptation: false
+    note: Official training code is dataset/CUDA-oriented; requires CT-domain validation before measurement use.
+  - name: AP-BSN
+    venue: CVPR 2022
+    role: asymmetric pixel-shuffle blind-spot denoising for correlated real noise
+    selected_for_local_adaptation: false
+    note: Official checkpoints target natural-camera sRGB datasets, not 16-bit CT.
+
+generative_candidates:
+  - name: FoundIR-v2
+    venue: CVPR 2026
+    role: generative all-in-one image restoration foundation model
+    selected_for_measurement: false
+    note: Requires SDXL/LLaVA checkpoints and one or two CUDA GPUs; natural-image prior may hallucinate layers.
+  - name: Diffusion X-ray denoising
+    venue: MIDL 2024
+    role: domain-trained diffusion denoising for planar X-ray
+    selected_for_measurement: false
+    note: Promising when trained on matched X-ray physics/noise; not a zero-shot replacement for industrial CT calibration.

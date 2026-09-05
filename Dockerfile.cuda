@@ -1,0 +1,12 @@
+FROM pytorch/pytorch:2.7.1-cuda12.8-cudnn9-runtime
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    OMP_NUM_THREADS=8
+
+WORKDIR /workspace
+COPY requirements-common.txt ./
+RUN pip install --no-cache-dir -r requirements-common.txt
+COPY app ./app
+
+ENTRYPOINT ["python", "app/pipeline.py"]

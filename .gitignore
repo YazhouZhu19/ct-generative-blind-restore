@@ -1,0 +1,24 @@
+# Raw/derived image data and model artifacts are intentionally not committed.
+input/*
+!input/.gitkeep
+results/*
+!results/.gitkeep
+results_quality/*
+!results_quality/.gitkeep
+results_length/*
+!results_length/.gitkeep
+
+*.tif
+*.tiff
+*.png
+*.jpg
+*.jpeg
+*.pt
+*.pth
+*.ckpt
+
+__pycache__/
+*.py[cod]
+.DS_Store
+.venv/
+venv/
