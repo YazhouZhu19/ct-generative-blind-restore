@@ -21,6 +21,14 @@ v15 emits an explicitly synthetic `FINAL_VISUAL_ONLY_*` companion and a separate
 
 The selected current-image profile freezes lamella/interlayer pixels and denoises only the central solid region. v15 remains the immutable audit baseline.
 
+## v17 structure-conditioned diffusion experiment
+
+- `app/structure_conditioned_diffusion.py`: compact bounded-residual DDIM conditioned by the v16 carrier, curved centerlines, finite-width boundaries, endpoints, interlayers, confidence, uncertainty, and a low-frequency appearance proposal.
+- `STRUCTURE_CONDITIONED_DIFFUSION_V17_REPORT*.md`: bilingual architecture, loss, sampling, current-image results, and validation boundary.
+- `ct-v17-structure-diffusion`: CPU container entry point.
+
+Unlike v15/v16 measurement outputs, the v17 result contains generated residual pixels. It is therefore labelled `MEASUREMENT_CANDIDATE` and must retain v16 as the fallback and audit reference.
+
 ## Preserved v11 release
 
 ```text

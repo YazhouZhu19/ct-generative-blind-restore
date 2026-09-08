@@ -81,7 +81,7 @@ Docker entry point:
 docker compose run --rm ct-v15-dual
 ```
 
-The core is `structure_carrier_projection()` in `app/generative_shape_project.py`; `app/run_v15_pipeline.py` provides one-command orchestration. The complete workflow ran successfully in the `ct-generative-blind-restore:cpu` container. After adding the v16 guardrail test, the current 32-test suite passes.
+The core is `structure_carrier_projection()` in `app/generative_shape_project.py`; `app/run_v15_pipeline.py` provides one-command orchestration. The complete workflow ran successfully in the `ct-generative-blind-restore:cpu` container. After adding the v16 and v17 guardrail tests, the current 37-test suite passes.
 
 ## 5. Usage boundary
 

@@ -28,6 +28,15 @@ generative_candidates:
     note: Promising when trained on matched X-ray physics/noise; not a zero-shot replacement for industrial CT calibration.
 
 preserved_profiles:
+  - name: v17-structure-carrier-conditioned-diffusion
+    entrypoint: app/structure_conditioned_diffusion.py
+    input: v16 structural carrier plus geometry fields, uncertainty, and a visual proposal
+    generator: bounded-residual conditional DDIM with a compact structure adapter
+    training_constraints: carrier confidence, x/y edges, width and endpoint projections, finite-width boundary field, interlayers, and midscale axial detail
+    sampling_constraints: carrier-centered residual cap, boundary/endpoint protection, zero-phase cleanup, and independent v15/v16 audit
+    selected_generated_residual_strength: 0.85
+    status: measurement candidate; not a replacement for the calibrated v16 carrier
+    warning: Generated pixels are present and require multi-image plus calibrated-phantom validation.
   - name: v16-measurement-quality
     entrypoint: app/measurement_quality_optimize.py
     input: v15 blind-denoised structure carrier

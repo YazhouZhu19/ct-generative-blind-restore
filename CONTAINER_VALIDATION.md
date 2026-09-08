@@ -6,7 +6,7 @@
 - Platform: Linux/arm64
 - Allocated resources: 8 CPUs, approximately 3.8 GiB RAM
 - Image: `ct-generative-blind-restore:cpu`
-- Final image digest/ID: `sha256:51bd596a3b3266317b9496b2817476970e21ae3a004a551271a37670542be5ec`
+- Final image digest/ID: `sha256:1a986e07bcb2bd82b5dfa14c5a5b9ced1c9bfa71a5daff29612195808ea61eb3`
 - Final image size: 271,904,966 bytes
 
 The image was built successfully from `Dockerfile.cpu` with the pinned Python packages. A whitelist-style `.dockerignore` prevents raw images, runtime results, model weights, Git metadata, reports, and host Python caches from entering the Docker build context. The final rebuild transferred only the whitelisted context and reused the verified dependency layers.
@@ -46,13 +46,13 @@ All five container stages completed with exit code 0:
 | Independent length-delta P95 | 0.385 px |
 | Blind, directional, width, endpoint, boundary-cleanup, residual-denoising and length guardrails | pass |
 
-The smoke run intentionally uses only ten iterations to validate image loading, training, strict blind inference, geometry-locked axial candidate selection, the complete original enhancement/fog-cleanup chain, v6 boundary cleanup, v7 hybrid residual denoising, TIFF writing, v8 summary metrics, and the fixed-guide independent audit inside the container. The production result uses 600 iterations in the same pinned dependency environment. The current repository suite contains 32 passing unit tests.
+The smoke run intentionally uses only ten iterations to validate image loading, training, strict blind inference, geometry-locked axial candidate selection, the complete original enhancement/fog-cleanup chain, v6 boundary cleanup, v7 hybrid residual denoising, TIFF writing, v8 summary metrics, and the fixed-guide independent audit inside the container. The production result uses 600 iterations in the same pinned dependency environment. After adding five v17 tests, the current repository suite contains 37 passing unit tests.
 
 The Compose run used `--rm`; no stopped smoke-test container remained afterward. Runtime outputs are under `results_sota/container_smoke_v8/` and are excluded from Git.
 
 ## v13 Direct Blind-Guide Validation
 
-The v13 post-processing and hard-projection commands were executed with the same `ct-generative-blind-restore:cpu` image and completed with exit code 0. The final file is a 2200×1600, 16-bit grayscale TIFF. The current 32-test suite passes inside the container, including tests that verify blind-guide axial-detail transfer, reject mismatched guide dimensions, enforce the explicit source-size lock, and prove zero generated-pixel contribution in the v15 measurement core.
+The v13 post-processing and hard-projection commands were executed with the same `ct-generative-blind-restore:cpu` image and completed with exit code 0. The final file is a 2200×1600, 16-bit grayscale TIFF. The current 37-test suite passes inside the container, including tests that verify blind-guide axial-detail transfer, reject mismatched guide dimensions, enforce the explicit source-size lock, and prove zero generated-pixel contribution in the v15 measurement core.
 
 | v13 check | Result |
 |---|---:|
@@ -75,7 +75,7 @@ The preserved `app/run_v11_pipeline.py` entry point was executed in the same CPU
 - The regenerated and archived 16-bit TIFF pixel arrays have maximum absolute difference `0` and `0` differing pixels.
 - The native post-processed candidate is 1470×1070. The explicit Lanczos size-lock output, hard-projection input, final PNG, and final TIFF are all 2200×1600, matching the source and guide exactly.
 - The run recovers 49 left and 51 right lamellae, 98 interlayers, endpoint-shift P95 `0.088836 px`, length-change P95 `0.105491 px`, and FWHM-error P95 `0.332364%`.
-- All 32 repository unit tests pass in the container.
+- All 37 repository unit tests pass in the container.
 
 The v11 profile rejects a non-zero direct guide-detail weight. Later v13 behavior is available only through an explicit `--profile v13`, so the preserved v11 command cannot silently change behavior.
 
@@ -97,7 +97,7 @@ The v11 profile rejects a non-zero direct guide-detail weight. Later v13 behavio
 | Median axial-detail correlation | 1.0000 | 0.8913 |
 | Geometry, raw-nonregression, interlayer, clarity, and structure guardrails | pass | pass |
 
-The container also ran all 32 unit tests successfully. Two dedicated v15 tests verify that changing the generated image cannot change measurement-core pixels and that a mismatched guide size is rejected; the v16 test rejects excessive lamella-width drift.
+The container also ran all 37 unit tests successfully. Two dedicated v15 tests verify that changing the generated image cannot change measurement-core pixels and that a mismatched guide size is rejected; the v16 test rejects excessive lamella-width drift. Five v17 tests cover condition-field protection, the carrier-safe zero initialization, differentiable geometry-loss response, residual capping, and full tile coverage.
 
 ## v16 Measurement-Quality Validation
 
@@ -110,3 +110,23 @@ The v16 selector was run against the v15 2200×1600 uint16 measurement carrier i
 - Median axial-detail correlation: `1.0000`
 - SSIM against v15: `0.99963`
 - All strict v16 geometry, detail, edge-retention, and SSIM guardrails: pass
+
+## v17 Structure-Conditioned Diffusion Validation
+
+The production v17 run used the same CPU image, 320 single-image adaptation iterations, 48 diffusion noise levels, six deterministic DDIM sampling steps, 192-pixel tiles, and 40-pixel overlap. It completed with exit code 0 and wrote a 2200×1600 uint16 TIFF.
+
+| v17 check | Result |
+|---|---:|
+| Selected generated-residual strength | 0.85 |
+| Lamella axial-noise reduction vs v16 | 1.05% |
+| Central high-frequency reduction vs v16 | 2.67% |
+| Flat-region high-frequency reduction vs v16 | 1.51% |
+| Lamella-width P95 error | 0.3409% |
+| Endpoint-shift P95 | 0.00043 px |
+| Interlayer-width P95 error | 0.1911% |
+| Interlayer-length P95 error | 0.07970 px |
+| SSIM against v16 | 0.999968 |
+| Median/P10 axial-detail correlation | 0.999991 / 0.999985 |
+| Strict geometry/detail/edge/SSIM guardrails | pass |
+
+Only the configured target ROI changed; the rest of the 2200×1600 canvas is pixel-identical to v16. Generated residual pixels are present, so the result remains a measurement candidate pending multi-image and calibrated-phantom validation.

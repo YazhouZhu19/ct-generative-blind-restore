@@ -1,4 +1,29 @@
 services:
+  ct-v17-structure-diffusion:
+    build:
+      context: .
+      dockerfile: Dockerfile.cpu
+    image: ct-generative-blind-restore:cpu
+    entrypoint: ["python", "app/structure_conditioned_diffusion.py"]
+    volumes:
+      - ./input:/data/input:ro
+      - ./results_sota:/data/results_sota:ro
+      - ./results_generative_shape_v16_measurement_quality:/data/results_v16:ro
+      - ./results_generative_shape_v17_structure_conditioned_diffusion:/data/results_v17
+    command:
+      - --source
+      - /data/input/source_16bit.tif
+      - --carrier
+      - /data/results_v16/FINAL_MEASUREMENT_v16_quality_enhanced_2200x1600_16bit.tif
+      - --proposal
+      - /data/input/generative_candidate_visual_only.png
+      - --uncertainty
+      - /data/results_sota/01_sota_blind/MEASUREMENT_sota_uncertainty_float32.tif
+      - --outdir
+      - /data/results_v17
+      - --device
+      - cpu
+
   ct-v16-measurement-quality:
     build:
       context: .

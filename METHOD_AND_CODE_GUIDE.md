@@ -16,6 +16,8 @@
 
 > **v16 测量质量更新：** `app/measurement_quality_optimize.py` 以v15结构载体为不可覆盖基线，搜索受端点保护、零相位、幅度受限的残差去噪候选。本图中所有非零层纹强度均被逐层双证据审计拒绝，最终仅对中央实体块执行非局部均值去噪，中央高频噪声下降9.77%，层纹与夹层几何指标不变。详见 [`MEASUREMENT_QUALITY_V16_REPORT.md`](MEASUREMENT_QUALITY_V16_REPORT.md)。
 
+> **v17 条件生成实验：** `app/structure_conditioned_diffusion.py` 把v16结构载体、弯曲中心线、有限宽边界、端点、夹层、置信度和不确定度作为生成网络的多通道条件，并在扩散训练中加入宽度、长度、边缘、边界场、夹层和中尺度细节损失。输出是载体中心的有界生成残差，生成后仍须通过独立逐层审计。本图选择0.85生成残差强度，层纹/中央/平坦区噪声相对v16分别下降1.05%/2.67%/1.51%。因为含生成像素，文件标记为 `MEASUREMENT_CANDIDATE`。详见 [`STRUCTURE_CONDITIONED_DIFFUSION_V17_REPORT.md`](STRUCTURE_CONDITIONED_DIFFUSION_V17_REPORT.md)。
+
 ## 1. 任务目标
 
 输入是一张 1600 × 2200、单通道 uint16 工业 CT/射线 TIFF。希望达到：

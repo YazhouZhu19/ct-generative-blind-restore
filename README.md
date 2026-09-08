@@ -12,6 +12,8 @@ For lamella and interlayer measurement, the latest recommended architecture is *
 
 The optional **v16 measurement-quality refinement** starts from the v15 measurement carrier and searches only guide-derived, zero-phase, capped residual-denoising candidates. On the supplied image, every nonzero lamella-body strength was rejected by per-layer dual-evidence checks; the selected profile therefore freezes all lamella pixels and applies non-local means only to the central solid region. It reduces central high-frequency noise by `9.77%` while retaining zero lamella/interlayer width error, zero endpoint P95 error, and `0.99963` SSIM against v15. See the [English v16 report](MEASUREMENT_QUALITY_V16_REPORT_EN.md) and [Chinese v16 report](MEASUREMENT_QUALITY_V16_REPORT.md).
 
+The experimental **v17 structure-carrier-conditioned diffusion** path makes the structural carrier an explicit generator condition rather than a post-hoc reference. A compact bounded-residual DDIM receives carrier intensity, low-frequency appearance, x/y gradients, curved centerlines, finite-width boundaries, endpoints, interlayers, confidence, and uncertainty. Its training objective includes diffusion, carrier, edge, width, endpoint, interlayer, boundary-field, and midscale-detail terms. On the supplied image the accepted generated residual strength is `0.85`; relative to v16, lamella axial noise decreases `1.05%`, central high-frequency noise decreases `2.67%`, and flat-region noise decreases `1.51%`, with `0.34%` lamella-width P95 error, `0.00043 px` endpoint P95 error, and `0.999968` SSIM. Because generated pixels are present, the output is explicitly a `MEASUREMENT_CANDIDATE`, not a calibrated replacement for v16. See the [English v17 report](STRUCTURE_CONDITIONED_DIFFUSION_V17_REPORT_EN.md) and [Chinese v17 report](STRUCTURE_CONDITIONED_DIFFUSION_V17_REPORT.md).
+
 The organized code, documentation, runtime-data boundaries, and release archives are indexed in [`PROJECT_STRUCTURE.md`](PROJECT_STRUCTURE.md).
 
 Versions v12 and v13 remain available as research profiles; they do not alter the frozen v11 profile or archived v11 result. v15 reuses a tuned v13 projection only for its explicitly named `VISUAL_ONLY` companion. See the [v12 English](GENERATIVE_RAW_DUAL_EVIDENCE_V12_REPORT_EN.md), [v12 Chinese](GENERATIVE_RAW_DUAL_EVIDENCE_V12_REPORT.md), [v13 English](GENERATIVE_BLIND_GUIDE_DETAIL_V13_REPORT_EN.md), and [v13 Chinese](GENERATIVE_BLIND_GUIDE_DETAIL_V13_REPORT.md) reports. Generative pixels are never used in the v15 measurement output.
@@ -66,6 +68,27 @@ python app/measurement_quality_optimize.py \
 ```
 
 The v15 image remains the immutable audit baseline. v16 is accepted only when its endpoint, length, lamella-width, interlayer-width/length, raw-nonregression, multiscale-detail, edge-retention, and SSIM checks all pass.
+
+## Experimental v17 Structure-Conditioned Generator
+
+After preparing the v16 carrier and the blind uncertainty map, run:
+
+```bash
+docker compose run --rm ct-v17-structure-diffusion
+```
+
+or:
+
+```bash
+python app/structure_conditioned_diffusion.py \
+  --source input/source_16bit.tif \
+  --carrier results_generative_shape_v16_measurement_quality/FINAL_MEASUREMENT_v16_quality_enhanced_2200x1600_16bit.tif \
+  --proposal input/generative_candidate_visual_only.png \
+  --uncertainty results_sota/01_sota_blind/MEASUREMENT_sota_uncertainty_float32.tif \
+  --outdir results_generative_shape_v17_structure_conditioned_diffusion
+```
+
+The canonical output is `MEASUREMENT_CANDIDATE_v17_structure_conditioned_16bit.tif`. The generator predicts only a bounded residual around the carrier. Every residual strength is independently remeasured over all lamellae and interlayers, and the zero-strength v16 carrier is the mandatory fallback.
 
 ## Preserved v11 Guide-First Generative Workflow (Selected)
 
