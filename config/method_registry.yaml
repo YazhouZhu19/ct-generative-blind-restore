@@ -28,6 +28,35 @@ generative_candidates:
     note: Promising when trained on matched X-ray physics/noise; not a zero-shot replacement for industrial CT calibration.
 
 preserved_profiles:
+  - name: v20-measurement-safe-tv-postprocess
+    entrypoint: app/measurement_safe_postprocess.py
+    input: v19 measurement-invariant zoned result plus v16 non-generated structural carrier
+    retained_generation: v17 bounded-residual generative pixels already accepted through v18 and v19
+    generator_executed_in_v20: false
+    postprocess: seven-candidate search over amplitude-capped low-strength Chambolle-TV residuals in eroded soft-gated central, endpoint-exterior-fog, and flat-background zones
+    selected_candidate: tv_balanced_strong_post
+    selected_region_parameters: central tv12/0.40, endpoint-exterior-fog tv12/0.55, flat-background tv12/0.50, stack 0.00
+    soft_gate: explicit one-pixel exterior zero padding plus an 8 px distance-transform smoothstep ramp; zero outside support and on the first inside contour
+    uint16_locks: complete lamella/interlayer stacks, measurement-operator support, endpoint envelope, configured central ROI border/ring, and strong edges
+    invariance: every-row transverse width, direct 100-lamella/98-interlayer geometry equality, topology, endpoint, length, configured-ROI fixed-line tracking, local SSIM/gradient fidelity, allowed-write and seam audits, clipping, global SSIM, and write/read audits
+    noise_evidence: complementary fixed-support high-frequency RMS and Haar-detail mean-absolute proxies; no-reference and not independent proof of denoising accuracy
+    supplied_image_validation:
+      fixed_writable_hf_rms_reduction_percent: {central: 1.6893412, endpoint_exterior_fog: 0.6310707, flat_background: 5.1796276}
+      fixed_writable_haar_detail_reduction_percent: {central: 2.4734208, endpoint_exterior_fog: 0.6879911, flat_background: 7.1662980}
+      wider_v19_operator_reduction_percent: {central: 1.2454041, endpoint_exterior_fog: 0.0137632, flat_background: 0.5186381}
+      direct_geometry_rows: {lamella: 100, interlayer: 98, maximum_absolute_drift_px: 0.0}
+      changed_pixels: 88375
+      changed_outside_writable_support: 0
+      seam_absolute_delta_dn: {p95: 1, maximum: 7}
+      changed_pixel_absolute_delta_dn: {p99: 66, maximum: 118}
+      ssim_vs_v19: 0.9999943457
+    analytic_renderer_pixel_writeback: false
+    spatial_transform: none
+    resampling: none
+    sharpening: false
+    contrast_remapping: false
+    status: measurement candidate; requires calibrated multi-image validation
+    warning: V20 adds no generated pixels, but retained v17 pixels remain; the non-generated v16 carrier and exported numeric constraints remain authoritative.
   - name: v19-measurement-invariant-zoned-restoration
     entrypoint: app/structure_anchored_multiregion_denoise.py
     input: v18 constrained-detail result plus v16 non-generated structural carrier

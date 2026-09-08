@@ -1,8 +1,8 @@
 # Generative-Prior Blind CT Denoising with Geometry-Preserving Enhancement
 
-This repository contains a containerized workflow for single-image blind denoising, measurement-aware enhancement, and lamella/interlayer analysis on 16-bit industrial CT/X-ray images. The latest experimental path is v19: it retains the v17 structure-conditioned generator and v18 finite-width cleanup, then adds measurement-invariant zoned restoration, exact endpoint-envelope anchors, per-row FWHM checks, selective rollback, and a uint16 write/read release audit. The non-generated v16 carrier remains the authoritative measurement fallback.
+This repository contains a containerized workflow for single-image blind denoising, measurement-aware enhancement, and lamella/interlayer analysis on 16-bit industrial CT/X-ray images. The latest experimental path is v20: it retains the accepted v17 generator, v18 finite-width cleanup, and v19 zoned denoising, then adds measurement-locked, low-strength total-variation residual cleanup only in non-measurement zones. Complete lamella/interlayer stacks, deployed measurement-operator support, the configured central ROI border/ring, and other strong edges are copied bit-for-bit from v19. The non-generated v16 carrier remains the authoritative measurement fallback.
 
-For the latest work, see the [English v19 report](MEASUREMENT_INVARIANT_ZONED_RESTORATION_V19_REPORT_EN.md) or [Chinese v19 report](MEASUREMENT_INVARIANT_ZONED_RESTORATION_V19_REPORT.md). Earlier v6-v18 reports remain available as an auditable development history. The complete legacy-to-current code guide is in [`METHOD_AND_CODE_GUIDE.md`](METHOD_AND_CODE_GUIDE.md).
+For the latest work, see the [English v20 report](MEASUREMENT_SAFE_TV_POSTPROCESS_V20_REPORT_EN.md) or [Chinese v20 report](MEASUREMENT_SAFE_TV_POSTPROCESS_V20_REPORT.md). Earlier reports, including the [English v19 report](MEASUREMENT_INVARIANT_ZONED_RESTORATION_V19_REPORT_EN.md) and [Chinese v19 report](MEASUREMENT_INVARIANT_ZONED_RESTORATION_V19_REPORT.md), remain available as an auditable development history. The complete legacy-to-current code guide is in [`METHOD_AND_CODE_GUIDE.md`](METHOD_AND_CODE_GUIDE.md).
 
 The actual Docker Desktop build and end-to-end smoke run are recorded in [`CONTAINER_VALIDATION.md`](CONTAINER_VALIDATION.md).
 
@@ -19,6 +19,8 @@ The experimental **v18 constrained-detail fusion** combines v11's finite-width l
 The experimental **v19 measurement-invariant zoned restoration** retains the complete v17 generative and v18 constrained-detail chain, then separates residual cleanup into four independently gated regions: the lamella/interlayer stacks, central solid, endpoint-exterior fog, and low-structure background. Stack filtering is axial only, endpoint-envelope pixels are restored exactly, every third longitudinal row is checked for transverse-width drift, and unsafe lamella/gap neighborhoods are selectively rolled back to v18. Candidate selection and the final write/read round trip are audited on the exact uint16 pixels. See the [English v19 report](MEASUREMENT_INVARIANT_ZONED_RESTORATION_V19_REPORT_EN.md), [Chinese v19 report](MEASUREMENT_INVARIANT_ZONED_RESTORATION_V19_REPORT.md), and the run-generated `structure_anchored_multiregion_v19_metrics.json` for the selected parameters and measured results. Generated v17 pixels remain present, so v19 is still a `MEASUREMENT_CANDIDATE`; the non-generated v16 carrier and exported numeric constraints remain authoritative until calibrated validation.
 
 On the supplied 2200×1600 image, the selected `(stack, central, fog, flat)` strengths are `(0.02, 0.50, 0.60, 0.50)`. Relative to v18, the fixed high-frequency residual proxy decreases by `9.51%` in the central solid, `14.26%` in endpoint-exterior fog, and `11.99%` in low-structure background. Nine of 100 marginal lamellae are restored exactly. The quantized output retains `0.3150%` lamella-width P95 error, `0.2096%` interlayer-width P95 error, `0.004734 px` endpoint P95 deviation, and `0.003053 px` row-width-drift P95; every post-write release gate passes. These are single-image internal audit values, not calibrated physical-accuracy claims.
+
+The experimental **v20 measurement-safe TV post-process** runs no new generator and performs no sharpening, contrast remapping, registration, resize, resampling, warp, or analytic redraw. It searches seven low-strength Chambolle-TV residual profiles inside eroded, softly gated central, endpoint-exterior-fog, and flat-background writable zones. The selected `tv_balanced_strong_post` profile uses `(estimator, blend)=(tv12,0.40)` for the central zone, `(tv12,0.55)` for fog, and `(tv12,0.50)` for flat background, while stack strength stays zero. Relative to v19, fixed writable-support high-frequency RMS falls by `1.689%`, `0.631%`, and `5.180%`; a complementary fixed-support Haar-detail mean-absolute proxy falls by `2.473%`, `0.688%`, and `7.166%`. The complete lamella/interlayer stacks remain bit-exact, direct geometry comparison over 100 lamella and 98 interlayer rows has a maximum difference of `0 px`, every-row transverse-width drift is `0 px`, changes outside writable support are zero, and SSIM against v19 is `0.99999435`. These are complementary no-reference high-frequency proxies on one image, not independent proof or error against noise-free ground truth. Retained v17 pixels keep the output at `MEASUREMENT_CANDIDATE` status.
 
 The organized code, documentation, runtime-data boundaries, and release archives are indexed in [`PROJECT_STRUCTURE.md`](PROJECT_STRUCTURE.md).
 
@@ -137,6 +139,28 @@ python app/structure_anchored_multiregion_denoise.py \
 The canonical image is `MEASUREMENT_CANDIDATE_v19_structure_anchored_multiregion_16bit.tif`. The stage never resizes, registers, warps, or analytically redraws a lamella. It searches independent strengths for axial stack cleanup and three non-stack regions, restores protected endpoint-envelope pixels bit exactly, rejects excessive selective rollback, and validates topology, endpoint/length drift, aggregate and row-wise FWHM, edge/detail retention, regional noise, and SSIM. The final TIFF is reloaded and audited again before the run is declared complete.
 
 The same output directory contains the display preview and comparison, a zoned-mask audit, per-lamella and per-interlayer CSV files, row-wise width measurements, structure-detail statistics, and `structure_anchored_multiregion_v19_metrics.json`. Use the JSON as the source of truth for the selected candidate and all release checks; do not infer metrology validity from the preview alone.
+
+## Experimental v20 Measurement-Safe TV Post-Process
+
+After producing v16 and v19, run:
+
+```bash
+docker compose run --rm ct-v20-measurement-safe-postprocess
+```
+
+or directly:
+
+```bash
+python app/measurement_safe_postprocess.py \
+  --source input/source_16bit.tif \
+  --carrier results_generative_shape_v16_measurement_quality/FINAL_MEASUREMENT_v16_quality_enhanced_2200x1600_16bit.tif \
+  --input results_generative_shape_v19_structure_anchored_multiregion/MEASUREMENT_CANDIDATE_v19_structure_anchored_multiregion_16bit.tif \
+  --outdir results_generative_shape_v20_measurement_safe_postprocess
+```
+
+The canonical image is `MEASUREMENT_CANDIDATE_v20_measurement_safe_postprocessed_16bit.tif`. V20 computes softly gated, amplitude-capped TV residuals only in non-measurement zones. Each binary writable mask receives explicit one-pixel exterior zero padding before an 8 px distance-transform smoothstep ramp is applied; weights are exactly zero outside the support and on its first inside contour. It hard-copies the complete lamella/interlayer stacks, measurement-operator samples, configured central ROI border/ring, strong edges, and all endpoint-envelope anchors from the same-coordinate v19 uint16 image. Candidate selection checks topology, every-row FWHM, direct per-structure geometry equality, the fixed-line configured-ROI tracker, local SSIM and gradient retention, two complementary fixed-support high-frequency proxies, allowed-write containment, seam deltas, clipping, global SSIM, every lock set, and the unchanged canvas outside the target ROI. The selected result changes 88,375 pixels only inside writable support; changed pixels have absolute-delta P99/maximum values of 66/118 DN, while the zero-weight contour remains exact and the inner seam has 1/7 DN P95/maximum. The written TIFF is reloaded and audited a second time. The full repository suite contains 59 passing tests, including 12 v20-specific tests.
+
+The output directory also contains `MEASUREMENT_CANDIDATE_v20_measurement_safe_postprocessed.png`, `MEASUREMENT_CANDIDATE_v20_comparison.png`, `AUDIT_v20_measurement_safe_masks.png`, four per-structure CSV files, and `measurement_safe_postprocess_v20_metrics.json`. The JSON is the source of truth for the selected candidate, writable/locked regions, no-reference residual proxies, and post-write release result.
 
 ## Preserved v11 Guide-First Generative Workflow (Selected)
 

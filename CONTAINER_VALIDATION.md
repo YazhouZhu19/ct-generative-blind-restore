@@ -6,8 +6,8 @@
 - Platform: Linux/arm64
 - Allocated resources: 8 CPUs, approximately 3.8 GiB RAM
 - Image: `ct-generative-blind-restore:cpu`
-- Final image digest/ID: `sha256:1a986e07bcb2bd82b5dfa14c5a5b9ced1c9bfa71a5daff29612195808ea61eb3`
-- Final image size: 271,904,966 bytes
+- Final image digest/ID: `sha256:c8a2910b13f950f7c2955c47ef944ea035a3abeadc5ce4e75a0c73188915e929`
+- Final image size: 271,981,539 bytes
 
 The image was built successfully from `Dockerfile.cpu` with the pinned Python packages. A whitelist-style `.dockerignore` prevents raw images, runtime results, model weights, Git metadata, reports, and host Python caches from entering the Docker build context. The final rebuild transferred only the whitelisted context and reused the verified dependency layers.
 
@@ -46,13 +46,13 @@ All five container stages completed with exit code 0:
 | Independent length-delta P95 | 0.385 px |
 | Blind, directional, width, endpoint, boundary-cleanup, residual-denoising and length guardrails | pass |
 
-The smoke run intentionally uses only ten iterations to validate image loading, training, strict blind inference, geometry-locked axial candidate selection, the complete original enhancement/fog-cleanup chain, v6 boundary cleanup, v7 hybrid residual denoising, TIFF writing, v8 summary metrics, and the fixed-guide independent audit inside the container. The production result uses 600 iterations in the same pinned dependency environment. After adding five v17 tests and four v18 tests, the current repository suite contains 41 passing unit tests.
+The smoke run intentionally uses only ten iterations to validate image loading, training, strict blind inference, geometry-locked axial candidate selection, the complete original enhancement/fog-cleanup chain, v6 boundary cleanup, v7 hybrid residual denoising, TIFF writing, v8 summary metrics, and the fixed-guide independent audit inside the container. The production result uses 600 iterations in the same pinned dependency environment. At that historical revision, the repository suite contained 41 passing unit tests.
 
 The Compose run used `--rm`; no stopped smoke-test container remained afterward. Runtime outputs are under `results_sota/container_smoke_v8/` and are excluded from Git.
 
 ## v13 Direct Blind-Guide Validation
 
-The v13 post-processing and hard-projection commands were executed with the same `ct-generative-blind-restore:cpu` image and completed with exit code 0. The final file is a 2200×1600, 16-bit grayscale TIFF. The current 41-test suite passes inside the container, including tests that verify blind-guide axial-detail transfer, reject mismatched guide dimensions, enforce the explicit source-size lock, prove zero generated-pixel contribution in the v15 measurement core, and verify v18's canvas-safe selective rollback.
+The v13 post-processing and hard-projection commands were executed with the same `ct-generative-blind-restore:cpu` image and completed with exit code 0. The final file is a 2200×1600, 16-bit grayscale TIFF. The 41-test suite at that stage passed inside the container, including tests that verify blind-guide axial-detail transfer, reject mismatched guide dimensions, enforce the explicit source-size lock, prove zero generated-pixel contribution in the v15 measurement core, and verify v18's canvas-safe selective rollback.
 
 | v13 check | Result |
 |---|---:|
@@ -179,3 +179,44 @@ The CPU image was rebuilt after adding `app/structure_anchored_multiregion_denoi
 | Post-write geometry, topology, detail, SSIM, and anchor audit | pass |
 
 The residual reductions are fixed-operator high-frequency proxies rather than error against an unavailable noise-free ground truth. Generated v17 pixels remain in the v19 image, so the release is labelled `MEASUREMENT_CANDIDATE`; v16 and the exported numeric constraints remain the authoritative fallback until multi-image and calibrated-phantom validation is available.
+
+## v20 Measurement-Safe TV Post-Processing Validation
+
+The seven-member 2200×1600 v20 candidate grid was executed directly from the rebuilt CPU image without an application-code bind mount and completed with exit code 0. V20 consumed the v19 candidate and v16 carrier, ran no new generator, and selected `tv_balanced_strong_post`: all three writable regions use `tv12`, with `(central, fog, flat)` strengths `(0.40, 0.55, 0.50)`; the complete lamella/interlayer stack strength is zero. The more aggressive audit-only candidate was rejected by incremental global-correlation, local-fidelity, clipping, and uint16-delta limits. The output TIFF was reloaded and passed the second uint16 release audit.
+
+- Rebuilt CPU image ID: `sha256:c8a2910b13f950f7c2955c47ef944ea035a3abeadc5ce4e75a0c73188915e929`.
+- Final v20 TIFF SHA-256: `4a958a48f4fc22168b11c7b9bf7beeb2c55d2ae97b90b2d5700570da8b54b1e2`.
+- TIFF metadata from the release audit: `(1600, 2200)`, `uint16`, pixel round trip exact.
+- All 12 v20-specific tests and the complete 59-test repository suite pass with the image's embedded application code and the repository tests mounted read-only; `docker compose config --quiet` also passes.
+
+| v20 check | Result |
+|---|---:|
+| Generator executed in v20 | no |
+| Fixed writable-zone high-frequency reduction, central / fog / flat | 1.6893% / 0.6311% / 5.1796% |
+| Fixed writable-zone Haar-detail mean-absolute reduction, central / fog / flat | 2.4734% / 0.6880% / 7.1663% |
+| Full v19-operator high-frequency reduction, central / fog / flat | 1.2454% / 0.0138% / 0.5186% |
+| Complete lamella / interlayer residual change | 0% / 0% |
+| Direct per-record output-geometry drift, 100 lamellae / 98 interlayers | 0 px / 0 px maximum |
+| Endpoint-shift P95 | 0.004734 px |
+| Length-delta P95 | 0.060711 px |
+| Lamella / interlayer width P95 error | 0.3150% / 0.2096% |
+| Every-row width-drift median / P95 / maximum | 0 / 0 / 0 px |
+| Configured central-ROI edge-position drift P95 / maximum | 0.0000003 / 0.001604 px |
+| Configured central-ROI tracker width drift P95 / maximum | 0 / 0.000962 px |
+| Configured central-ROI tracker height drift P95 / maximum | 0.000019 / 0.001604 px |
+| Configured central-ROI edge-transition-width drift P95 / maximum | 0.000012 / 0.000246 px |
+| Configured central-ROI edge peak-strength / confidence P05 retention | 1.0000 / 1.0000 |
+| Changed hard/stack/central-boundary/strong-edge/operator-lock pixels | 0 / 0 / 0 / 0 / 0 |
+| Changed pixels outside target ROI | 0 |
+| Changed pixels outside declared writable support | 0 |
+| Zero-weight contour delta maximum; next soft-seam P95 / maximum | 0; 1 / 7 DN |
+| Changed pixels in full image | 88,375 (2.5107%) |
+| Absolute uint16 delta P50 / P95 / P99 / maximum | 9 / 44 / 66 / 118 DN |
+| New zero / saturation clipping pixels | 0 / 0 |
+| Local SSIM-map mean, central / fog / flat | 0.9999288 / 0.9999995 / 0.9999933 |
+| Local gradient correlation, central / fog / flat | 0.9998918 / 0.9999942 / 0.9975357 |
+| Low / mid / gradient correlation | 0.9999994 / 0.9999217 / 0.9998689 |
+| Full-target SSIM against v19 (corruption sentinel only) | 0.9999943 |
+| Post-write geometry, topology, central-integrity, detail, noise, clipping, and lock audit | pass |
+
+The first two residual rows use immutable masks restricted to pixels v20 is permitted to modify and provide complementary fixed-Gaussian and Haar-detail checks; the third applies v19's broader fixed regional operators. They are no-reference residual proxies, not error against a noise-free target and not evidence of SOTA performance. “Central ROI” refers to the configured rectangle and its fixed-line edge tracker, not a validated physical-object boundary. V20 itself introduces no generated pixels, but the input retains v17 generated residuals, so the release remains a `MEASUREMENT_CANDIDATE` and v16 remains the authoritative fallback.

@@ -9,6 +9,7 @@ results_length/*
 !results_length/.gitkeep
 results_sota/*
 !results_sota/.gitkeep
+results_generative_shape_*/
 
 *.tif
 *.tiff

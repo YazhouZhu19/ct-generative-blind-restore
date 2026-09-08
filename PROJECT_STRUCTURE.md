@@ -47,6 +47,15 @@ V18 writes no analytic ribbon pixels and performs no resize, registration, or wa
 
 V19 performs no resize, registration, warp, or analytic lamella redraw. Endpoint-envelope pixels are restored exactly, candidates are audited after uint16 quantization, and the written TIFF is reloaded for a second release audit. Because retained v17 generative pixels remain present, the result is labelled `MEASUREMENT_CANDIDATE`; v16 and the exported numeric constraints remain authoritative until calibrated multi-image validation.
 
+## v20 measurement-safe TV post-processing experiment
+
+- `app/measurement_safe_postprocess.py`: searches seven low-strength Chambolle-TV residual profiles only inside eroded, softly gated non-measurement zones while hard-copying every protected v19 uint16 pixel. Each mask receives one explicit exterior zero-padding contour before an 8 px distance-transform smoothstep ramp, which is exactly zero outside each writable support and on the first inside contour.
+- `tests/test_measurement_safe_postprocess.py`: contains 12 v20-specific tests covering identity, disjoint gates, zero-mean weighted residuals, the smoothstep contour, allowed-write containment, configured central ROI locking, direct structure drift, fixed-support high-frequency metrics, and TIFF round-trip fidelity. The complete repository suite contains 59 passing tests.
+- `MEASUREMENT_SAFE_TV_POSTPROCESS_V20_REPORT*.md`: bilingual method, filter selection evidence, supplied-image audit, and validation boundary.
+- `ct-v20-measurement-safe-postprocess`: default CPU Compose entry point with read-only source/v16/v19 mounts and an isolated v20 result volume.
+
+V20 runs no generator and performs no resize, registration, resampling, warp, analytic redraw, contrast remapping, or sharpening. The complete lamella/interlayer stack, measurement-operator support, configured central ROI border/ring, endpoint-envelope support, and strong edges are locked to v19 bit-for-bit. The selected `tv_balanced_strong_post` profile uses `tv12` with blends 0.40/0.55/0.50 for central/fog/flat regions. On the supplied image, fixed writable-support HF-RMS reductions are 1.6893%/0.6311%/5.1796%, complementary fixed-support Haar-detail reductions are 2.4734%/0.6880%/7.1663%, and SSIM against v19 is 0.99999435. Candidate and post-write release audits cover every image row, direct equality of 100 lamella and 98 interlayer geometry rows, the configured-ROI fixed-line tracker, local SSIM/gradient fidelity, allowed-write containment, soft-gate seams, clipping, and global SSIM. All 88,375 changed pixels are confined to writable support; their absolute-delta P99/maximum is 66/118 DN, while the inner seam is 1/7 DN at P95/maximum. These are single-image complementary no-reference high-frequency proxies, not independent evidence against clean truth. No claim is made that the configured ROI ring is a detected physical object boundary. Retained v17 pixels mean the result remains a `MEASUREMENT_CANDIDATE` and requires calibrated multi-image validation.
+
 ## Preserved v11 release
 
 ```text
@@ -128,6 +137,16 @@ experiment/results_generative_shape_v19_structure_anchored_multiregion/
   local_row_width_v19_comparison.csv
   structure_detail_v19.csv
   structure_anchored_multiregion_v19_metrics.json
+experiment/results_generative_shape_v20_measurement_safe_postprocess/
+  MEASUREMENT_CANDIDATE_v20_measurement_safe_postprocessed_16bit.tif
+  MEASUREMENT_CANDIDATE_v20_measurement_safe_postprocessed.png
+  MEASUREMENT_CANDIDATE_v20_comparison.png
+  AUDIT_v20_measurement_safe_masks.png
+  lamella_v20_comparison.csv
+  interlayer_v20_comparison.csv
+  local_row_width_v20_comparison.csv
+  structure_detail_v20.csv
+  measurement_safe_postprocess_v20_metrics.json
 ```
 
 `results_v11_size_locked` is the recommended organized result. The native generated candidate is retained for provenance, while its source-sized copy is created before post-processing; all enhancement operations, the projection input, and final PNG/TIFF therefore use exactly the same width and height as the source image.

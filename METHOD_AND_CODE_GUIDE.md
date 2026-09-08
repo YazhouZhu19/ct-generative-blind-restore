@@ -22,7 +22,9 @@
 
 > **v19 测量不变量分区恢复实验：** `app/structure_anchored_multiregion_denoise.py` 完整保留v17生成残差和v18规整边界，在其后把残余噪声拆为“层纹/夹层束、中央实体、端点外雾区、低结构背景”四区独立处理。层纹束只沿纵向滤波，端点包络像素逐位恢复为v18，并增加逐行FWHM、拓扑、回退比例及写盘后uint16复核。详见 [`MEASUREMENT_INVARIANT_ZONED_RESTORATION_V19_REPORT.md`](MEASUREMENT_INVARIANT_ZONED_RESTORATION_V19_REPORT.md)。
 
-本图的完整容器搜索选中`(stack, central, fog, flat)=(0.02, 0.50, 0.60, 0.50)`：中央实体、端点外雾区和低结构背景的固定高频残差分别下降9.51%、14.26%和11.99%，9/100条临界层纹被局部恢复；层纹/夹层宽度误差P95为0.3150%/0.2096%，逐行宽度漂移P95为0.003053 px，16位写回后的全部发布守卫通过。这里的残差下降是无真值条件下的代理量，不是绝对噪声误差。
+> **v20 测量锁定TV后处理实验：** `app/measurement_safe_postprocess.py` 不再次运行生成器，而是完整保留v17→v19结果，仅在中央ROI内核、端点外雾区和低结构背景的可写像素上叠加低强度Chambolle-TV残差。完整层纹/夹层束、测量算子支持、配置的中央ROI边框/环、强边缘和端点包络均从v19的uint16像素逐位锁定。详见 [`MEASUREMENT_SAFE_TV_POSTPROCESS_V20_REPORT.md`](MEASUREMENT_SAFE_TV_POSTPROCESS_V20_REPORT.md)。
+
+> **v19 本图结果：** 完整容器搜索选中`(stack, central, fog, flat)=(0.02, 0.50, 0.60, 0.50)`：中央实体、端点外雾区和低结构背景的固定高频残差分别下降9.51%、14.26%和11.99%，9/100条临界层纹被局部恢复；层纹/夹层宽度误差P95为0.3150%/0.2096%，逐行宽度漂移P95为0.003053 px，16位写回后的全部发布守卫通过。这里的残差下降是无真值条件下的代理量，不是绝对噪声误差。
 
 ## v19 完整流程入口
 
@@ -72,6 +74,59 @@ python app/structure_anchored_multiregion_denoise.py \
 
 v19仍保留v17生成像素，因此“守卫通过”只表示当前自动审计没有发现超阈值结构退化，不等于计量认证。正式长度和厚度结论仍应以v16载体、导出的数值约束以及经像素尺寸和PSF/MTF标定的验证为准。
 
+## v20 完整流程入口
+
+v20 是 v19 之后的纯后处理阶段，不训练或采样新的生成模型，也不替换已有增强链。输入为原始图、v16非生成结构载体和v19候选：
+
+```text
+原始16位图 ───────────┐
+v16结构载体 ──────────┼→ 重建固定结构、测量算子和审计基线
+v19增强去噪候选 ──────┘
+            ↓
+锁定完整层纹/夹层束 + 端点包络 + 测量算子支持
+锁定配置的中央ROI边框/环 + 全图强边缘
+            ↓
+只在三个非测量可写区生成有幅度上限的低强度TV残差
+  ├─ 腐蚀后的中央ROI内核
+  ├─ 端点外雾区
+  └─ 低结构背景
+            ↓
+显式1 px外部零填充 + 8 px距离变换smoothstep渐变门控（支持域外和第一圈权重为0）
+→ 恢复全部uint16锁定像素 → 候选量化审计
+            ↓
+写入2200×1600 uint16 TIFF → 重新读取 → 二次发布审计
+```
+
+默认 CPU 容器入口：
+
+```bash
+docker compose run --rm ct-v20-measurement-safe-postprocess
+```
+
+等价的直接运行命令：
+
+```bash
+python app/measurement_safe_postprocess.py \
+  --source input/source_16bit.tif \
+  --carrier results_generative_shape_v16_measurement_quality/FINAL_MEASUREMENT_v16_quality_enhanced_2200x1600_16bit.tif \
+  --input results_generative_shape_v19_structure_anchored_multiregion/MEASUREMENT_CANDIDATE_v19_structure_anchored_multiregion_16bit.tif \
+  --outdir results_generative_shape_v20_measurement_safe_postprocess
+```
+
+搜索共包含7个候选。本图选择 `tv_balanced_strong_post`：中央区使用 `TV weight=0.0012、strength=0.40`，雾区使用 `0.0012、0.55`，平坦背景使用 `0.0012、0.50`，层纹束强度固定为0。按运行前冻结的可写支持域，相对v19的固定高频RMS分别下降1.6893%、0.6311%和5.1796%；在另一组固定空间支持上，Haar三方向细节平均绝对值分别下降2.4734%、0.6880%和7.1663%。沿用v19较宽区域固定算子的中央、雾区和背景下降分别为1.2454%、0.0138%和0.5186%。这些是固定空间支持上的互补无真值高频代理，不是相互独立的证明，也不能解释成相对无噪真值的误差下降。
+
+候选量化后检查每一行层纹宽度、端点与长度、层纹/夹层宽度和数量、配置中央ROI的固定行列跟踪结果、拓扑、边缘清晰度、多尺度相关性、可写区局部SSIM/梯度保留、固定支持域高频代理、新增裁剪、全局SSIM、锁定像素、允许写入集合和ROI外画布。本次对100条层纹和98条夹层的直接输出几何逐行比较最大差值为0 px；41,327个逐行宽度样本的漂移中位数/P95/最大值均为0。全部锁定集合、允许写入支持域外及ROI外的uint16变化像素均为0。零权重外轮廓变化为0，软门控内接缝绝对变化P95/最大值为1/7 DN。候选共改变88,375个像素，变化绝对值P99/最大值为66/118 DN；相对v19的SSIM为0.99999435，局部SSIM和梯度守卫以及写盘重读后的全部发布守卫均通过。
+
+主要输出为：
+
+- `MEASUREMENT_CANDIDATE_v20_measurement_safe_postprocessed_16bit.tif`：原尺寸uint16候选图；
+- `MEASUREMENT_CANDIDATE_v20_measurement_safe_postprocessed.png` 与 `MEASUREMENT_CANDIDATE_v20_comparison.png`：显示和前后对比；
+- `AUDIT_v20_measurement_safe_masks.png`：可写区、结构锁和边缘锁审计图；
+- `lamella_v20_comparison.csv`、`interlayer_v20_comparison.csv`、`local_row_width_v20_comparison.csv`、`structure_detail_v20.csv`：逐结构证据；
+- `measurement_safe_postprocess_v20_metrics.json`：参数搜索、固定掩膜、全部守卫和写盘后二次审计。
+
+v20不做CLAHE、锐化、黑电平裁剪、尺寸变化、配准、形变、重采样或解析层纹重绘。当前配置的中央ROI边框/环被逐位锁定，并通过固定行列亚像素跟踪器审计；这不应表述为已经识别或认证了物理实体边界。它仍保留v17生成像素，因此输出仍是`MEASUREMENT_CANDIDATE`；正式计量继续以v16载体和经过标定的数值审计为准。完整测试集为59项，其中12项为v20专用测试。
+
 ## 1. 任务目标
 
 输入是一张 1600 × 2200、单通道 uint16 工业 CT/射线 TIFF。希望达到：
@@ -102,7 +157,7 @@ v5/v6 只把生成图转换成受限的低频损失目标；生成像素永远�
 
 - APR-RD/AP-BSN 主要在真实 sRGB 相机噪声数据上验证；现成权重的噪声域和本工业 CT 不同。
 - FoundIR-v2 依赖 SDXL、LLaVA 13B 等大模型和 CUDA GPU，其自然图像生成先验可能重构或规则化片层。
-- 当前只有一张待处理图，没有配对的同位置无噪声真值，也没有同设备的低剂量/高剂量训练集。
+- 当前只有一张待处理图，没有配对的同位置无噪声真值，也没有同设备的多曝光水平训练集。
 - 当前机器没有 CUDA；v8 已在 Docker Desktop CPU 容器中完成10步、五阶段端到端冒烟验证，600步正式盲结果由同一固定依赖集在本机 CPU 环境完成。
 
 因此本次实际运行选择“单图内部自监督 + 保真约束”，并把生成式结果降级为视觉目标。

@@ -1,4 +1,25 @@
 services:
+  ct-v20-measurement-safe-postprocess:
+    build:
+      context: .
+      dockerfile: Dockerfile.cpu
+    image: ct-generative-blind-restore:cpu
+    entrypoint: ["python", "app/measurement_safe_postprocess.py"]
+    volumes:
+      - ./input:/data/input:ro
+      - ./results_generative_shape_v16_measurement_quality:/data/results_v16:ro
+      - ./results_generative_shape_v19_structure_anchored_multiregion:/data/results_v19:ro
+      - ./results_generative_shape_v20_measurement_safe_postprocess:/data/results_v20
+    command:
+      - --source
+      - /data/input/source_16bit.tif
+      - --carrier
+      - /data/results_v16/FINAL_MEASUREMENT_v16_quality_enhanced_2200x1600_16bit.tif
+      - --input
+      - /data/results_v19/MEASUREMENT_CANDIDATE_v19_structure_anchored_multiregion_16bit.tif
+      - --outdir
+      - /data/results_v20
+
   ct-v19-measurement-invariant-zoned:
     build:
       context: .
