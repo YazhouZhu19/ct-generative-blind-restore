@@ -14,6 +14,8 @@ The optional **v16 measurement-quality refinement** starts from the v15 measurem
 
 The experimental **v17 structure-carrier-conditioned diffusion** path makes the structural carrier an explicit generator condition rather than a post-hoc reference. A compact bounded-residual DDIM receives carrier intensity, low-frequency appearance, x/y gradients, curved centerlines, finite-width boundaries, endpoints, interlayers, confidence, and uncertainty. Its training objective includes diffusion, carrier, edge, width, endpoint, interlayer, boundary-field, and midscale-detail terms. On the supplied image the accepted generated residual strength is `0.85`; relative to v16, lamella axial noise decreases `1.05%`, central high-frequency noise decreases `2.67%`, and flat-region noise decreases `1.51%`, with `0.34%` lamella-width P95 error, `0.00043 px` endpoint P95 error, and `0.999968` SSIM. Because generated pixels are present, the output is explicitly a `MEASUREMENT_CANDIDATE`, not a calibrated replacement for v16. See the [English v17 report](STRUCTURE_CONDITIONED_DIFFUSION_V17_REPORT_EN.md) and [Chinese v17 report](STRUCTURE_CONDITIONED_DIFFUSION_V17_REPORT.md).
 
+The experimental **v18 constrained-detail fusion** combines v11's finite-width localization and closed-loop per-structure acceptance with v17's generated denoising. It applies only zero-phase symmetric cleanup to existing v17 pixels, exports row-wise carrier width trajectories, and restores every regressing lamella and adjacent gap to the exact v17 baseline. On the supplied image, 74 lamellae retain enhancement and 26 marginal lamellae are rolled back. Interlayer high-frequency noise decreases another `0.472%`; lamella-width P95 error remains `0.3407%`, endpoint P95 error is `0.00459 px`, and axial-detail correlation is `0.999986`. No analytic ribbon pixels, resize, registration, or warp are used. See the [English v18 report](CONSTRAINED_DETAIL_FUSION_V18_REPORT_EN.md) and [Chinese v18 report](CONSTRAINED_DETAIL_FUSION_V18_REPORT.md).
+
 The organized code, documentation, runtime-data boundaries, and release archives are indexed in [`PROJECT_STRUCTURE.md`](PROJECT_STRUCTURE.md).
 
 Versions v12 and v13 remain available as research profiles; they do not alter the frozen v11 profile or archived v11 result. v15 reuses a tuned v13 projection only for its explicitly named `VISUAL_ONLY` companion. See the [v12 English](GENERATIVE_RAW_DUAL_EVIDENCE_V12_REPORT_EN.md), [v12 Chinese](GENERATIVE_RAW_DUAL_EVIDENCE_V12_REPORT.md), [v13 English](GENERATIVE_BLIND_GUIDE_DETAIL_V13_REPORT_EN.md), and [v13 Chinese](GENERATIVE_BLIND_GUIDE_DETAIL_V13_REPORT.md) reports. Generative pixels are never used in the v15 measurement output.
@@ -89,6 +91,26 @@ python app/structure_conditioned_diffusion.py \
 ```
 
 The canonical output is `MEASUREMENT_CANDIDATE_v17_structure_conditioned_16bit.tif`. The generator predicts only a bounded residual around the carrier. Every residual strength is independently remeasured over all lamellae and interlayers, and the zero-strength v16 carrier is the mandatory fallback.
+
+## Experimental v18 Clean-Boundary / Detail-Preserving Fusion
+
+After producing v17, run:
+
+```bash
+docker compose run --rm ct-v18-constrained-detail-fusion
+```
+
+or:
+
+```bash
+python app/constrained_detail_fusion.py \
+  --source input/source_16bit.tif \
+  --carrier results_generative_shape_v16_measurement_quality/FINAL_MEASUREMENT_v16_quality_enhanced_2200x1600_16bit.tif \
+  --generated results_generative_shape_v17_structure_conditioned_diffusion/MEASUREMENT_CANDIDATE_v17_structure_conditioned_16bit.tif \
+  --outdir results_generative_shape_v18_clean_edges_detail_preserved
+```
+
+The canonical output is `MEASUREMENT_CANDIDATE_v18_clean_edges_detail_preserved_16bit.tif`. V11-style geometry fields localize the operation but contribute no analytic intensity pixels. Every modified structure is independently audited, and unsafe layers are locally restored to v17 before release.
 
 ## Preserved v11 Guide-First Generative Workflow (Selected)
 

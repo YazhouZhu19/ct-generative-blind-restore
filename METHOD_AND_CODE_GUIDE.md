@@ -18,6 +18,8 @@
 
 > **v17 条件生成实验：** `app/structure_conditioned_diffusion.py` 把v16结构载体、弯曲中心线、有限宽边界、端点、夹层、置信度和不确定度作为生成网络的多通道条件，并在扩散训练中加入宽度、长度、边缘、边界场、夹层和中尺度细节损失。输出是载体中心的有界生成残差，生成后仍须通过独立逐层审计。本图选择0.85生成残差强度，层纹/中央/平坦区噪声相对v16分别下降1.05%/2.67%/1.51%。因为含生成像素，文件标记为 `MEASUREMENT_CANDIDATE`。详见 [`STRUCTURE_CONDITIONED_DIFFUSION_V17_REPORT.md`](STRUCTURE_CONDITIONED_DIFFUSION_V17_REPORT.md)。
 
+> **v18 规整边界与细节兼容实验：** `app/constrained_detail_fusion.py` 保留v17生成式去噪，只把v11有限宽几何场用于零相位边界/端点增强与夹层残差收缩；不写入解析片层像素。每个候选完成逐条层纹和夹层审计，退化结构局部恢复为v17。本图有74条层纹保留增强、26条自动回退，夹层高频噪声再下降0.472%，层纹宽度P95误差保持0.3407%。详见 [`CONSTRAINED_DETAIL_FUSION_V18_REPORT.md`](CONSTRAINED_DETAIL_FUSION_V18_REPORT.md)。
+
 ## 1. 任务目标
 
 输入是一张 1600 × 2200、单通道 uint16 工业 CT/射线 TIFF。希望达到：

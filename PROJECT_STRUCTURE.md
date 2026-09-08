@@ -29,6 +29,15 @@ The selected current-image profile freezes lamella/interlayer pixels and denoise
 
 Unlike v15/v16 measurement outputs, the v17 result contains generated residual pixels. It is therefore labelled `MEASUREMENT_CANDIDATE` and must retain v16 as the fallback and audit reference.
 
+## v18 constrained-detail fusion experiment
+
+- `app/constrained_detail_fusion.py`: applies zero-phase boundary/endpoint enhancement and eroded-interlayer residual shrinkage inside v11-style finite-width constraint fields, followed by selective per-layer rollback.
+- `tests/test_constrained_detail_fusion.py`: verifies identity behavior, canvas preservation, row-wise width normalization, and exact unsafe-structure restoration.
+- `CONSTRAINED_DETAIL_FUSION_V18_REPORT*.md`: bilingual method, supplied-image metrics, and validation boundary.
+- `ct-v18-constrained-detail-fusion`: CPU container entry point.
+
+V18 writes no analytic ribbon pixels and performs no resize, registration, or warp. It retains generated v17 pixels and is therefore still a `MEASUREMENT_CANDIDATE`, with v16 and the exported numeric constraints remaining authoritative.
+
 ## Preserved v11 release
 
 ```text

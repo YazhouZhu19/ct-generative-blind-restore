@@ -46,13 +46,13 @@ All five container stages completed with exit code 0:
 | Independent length-delta P95 | 0.385 px |
 | Blind, directional, width, endpoint, boundary-cleanup, residual-denoising and length guardrails | pass |
 
-The smoke run intentionally uses only ten iterations to validate image loading, training, strict blind inference, geometry-locked axial candidate selection, the complete original enhancement/fog-cleanup chain, v6 boundary cleanup, v7 hybrid residual denoising, TIFF writing, v8 summary metrics, and the fixed-guide independent audit inside the container. The production result uses 600 iterations in the same pinned dependency environment. After adding five v17 tests, the current repository suite contains 37 passing unit tests.
+The smoke run intentionally uses only ten iterations to validate image loading, training, strict blind inference, geometry-locked axial candidate selection, the complete original enhancement/fog-cleanup chain, v6 boundary cleanup, v7 hybrid residual denoising, TIFF writing, v8 summary metrics, and the fixed-guide independent audit inside the container. The production result uses 600 iterations in the same pinned dependency environment. After adding five v17 tests and four v18 tests, the current repository suite contains 41 passing unit tests.
 
 The Compose run used `--rm`; no stopped smoke-test container remained afterward. Runtime outputs are under `results_sota/container_smoke_v8/` and are excluded from Git.
 
 ## v13 Direct Blind-Guide Validation
 
-The v13 post-processing and hard-projection commands were executed with the same `ct-generative-blind-restore:cpu` image and completed with exit code 0. The final file is a 2200×1600, 16-bit grayscale TIFF. The current 37-test suite passes inside the container, including tests that verify blind-guide axial-detail transfer, reject mismatched guide dimensions, enforce the explicit source-size lock, and prove zero generated-pixel contribution in the v15 measurement core.
+The v13 post-processing and hard-projection commands were executed with the same `ct-generative-blind-restore:cpu` image and completed with exit code 0. The final file is a 2200×1600, 16-bit grayscale TIFF. The current 41-test suite passes inside the container, including tests that verify blind-guide axial-detail transfer, reject mismatched guide dimensions, enforce the explicit source-size lock, prove zero generated-pixel contribution in the v15 measurement core, and verify v18's canvas-safe selective rollback.
 
 | v13 check | Result |
 |---|---:|
@@ -97,7 +97,7 @@ The v11 profile rejects a non-zero direct guide-detail weight. Later v13 behavio
 | Median axial-detail correlation | 1.0000 | 0.8913 |
 | Geometry, raw-nonregression, interlayer, clarity, and structure guardrails | pass | pass |
 
-The container also ran all 37 unit tests successfully. Two dedicated v15 tests verify that changing the generated image cannot change measurement-core pixels and that a mismatched guide size is rejected; the v16 test rejects excessive lamella-width drift. Five v17 tests cover condition-field protection, the carrier-safe zero initialization, differentiable geometry-loss response, residual capping, and full tile coverage.
+The container also ran all 41 unit tests successfully. Two dedicated v15 tests verify that changing the generated image cannot change measurement-core pixels and that a mismatched guide size is rejected; the v16 test rejects excessive lamella-width drift. Five v17 tests cover condition-field protection, the carrier-safe zero initialization, differentiable geometry-loss response, residual capping, and full tile coverage. Four v18 tests cover identity behavior, target-ROI isolation, row-wise width normalization, and exact unsafe-neighborhood restoration.
 
 ## v16 Measurement-Quality Validation
 
@@ -130,3 +130,25 @@ The production v17 run used the same CPU image, 320 single-image adaptation iter
 | Strict geometry/detail/edge/SSIM guardrails | pass |
 
 Only the configured target ROI changed; the rest of the 2200×1600 canvas is pixel-identical to v16. Generated residual pixels are present, so the result remains a measurement candidate pending multi-image and calibrated-phantom validation.
+
+## v18 Constrained-Detail Fusion Validation
+
+The v18 full-resolution run completed in the same `ct-generative-blind-restore:cpu` image. It consumed the accepted v17 TIFF and v16 carrier, wrote a 2200×1600 uint16 TIFF, and applied no resampling, registration, warp, or analytic-ribbon pixel replacement.
+
+- Rebuilt CPU image ID: `sha256:95e0e008639fd9db093529ab104af12c4ce7e1574a7d769b645fab53a7097b8f`.
+- Final v18 TIFF SHA-256: `d9eee06e32596423e982fc57a9f4538767073e40d5f8ba0ffabefbc2643a4439`.
+
+| v18 check | Result |
+|---|---:|
+| Lamellae retaining enhancement / rolled back | 74 / 26 |
+| Interlayer high-frequency reduction vs v17 | 0.472% |
+| Edge-clarity gain vs v17 | 0.0617% |
+| Lamella-width P95 error | 0.3407% |
+| Endpoint-shift P95 | 0.00459 px |
+| Interlayer-width P95 error | 0.2211% |
+| Interlayer-length P95 error | 0.08270 px |
+| Median/P10 axial-detail correlation | 0.999986 / 0.999974 |
+| SSIM against v17 | 0.999998 |
+| Strict geometry/detail/edge/SSIM guardrails | pass |
+
+Every stronger candidate failed the lamella-width P95 gate and was rejected. The four v18 tests and all 37 pre-existing tests pass in the container.

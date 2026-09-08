@@ -28,6 +28,16 @@ generative_candidates:
     note: Promising when trained on matched X-ray physics/noise; not a zero-shot replacement for industrial CT calibration.
 
 preserved_profiles:
+  - name: v18-clean-boundary-detail-preserving-fusion
+    entrypoint: app/constrained_detail_fusion.py
+    input: v17 structure-conditioned result plus v16 structural carrier
+    constraint_role: v11-style finite-width boundary, endpoint, interlayer, and row-wise width audit fields
+    postprocess: zero-phase symmetric edge enhancement plus eroded-interlayer residual shrinkage
+    rollback: every regressing lamella and adjacent interlayer is restored to exact v17 pixels
+    analytic_renderer_pixel_writeback: false
+    spatial_transform: none
+    status: measurement candidate; requires calibrated multi-image validation
+    warning: Generated v17 pixels remain present; exported constraints and v16 remain authoritative.
   - name: v17-structure-carrier-conditioned-diffusion
     entrypoint: app/structure_conditioned_diffusion.py
     input: v16 structural carrier plus geometry fields, uncertainty, and a visual proposal

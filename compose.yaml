@@ -1,4 +1,25 @@
 services:
+  ct-v18-constrained-detail-fusion:
+    build:
+      context: .
+      dockerfile: Dockerfile.cpu
+    image: ct-generative-blind-restore:cpu
+    entrypoint: ["python", "app/constrained_detail_fusion.py"]
+    volumes:
+      - ./input:/data/input:ro
+      - ./results_generative_shape_v16_measurement_quality:/data/results_v16:ro
+      - ./results_generative_shape_v17_structure_conditioned_diffusion:/data/results_v17:ro
+      - ./results_generative_shape_v18_clean_edges_detail_preserved:/data/results_v18
+    command:
+      - --source
+      - /data/input/source_16bit.tif
+      - --carrier
+      - /data/results_v16/FINAL_MEASUREMENT_v16_quality_enhanced_2200x1600_16bit.tif
+      - --generated
+      - /data/results_v17/MEASUREMENT_CANDIDATE_v17_structure_conditioned_16bit.tif
+      - --outdir
+      - /data/results_v18
+
   ct-v17-structure-diffusion:
     build:
       context: .
