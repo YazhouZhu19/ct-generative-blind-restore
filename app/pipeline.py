@@ -62,6 +62,13 @@ def parse_roi(text: str) -> Roi:
     return Roi(*values)
 
 
+def parse_range(text: str) -> tuple[int, int]:
+    values = tuple(int(v.strip()) for v in text.split(","))
+    if len(values) != 2 or values[1] <= values[0]:
+        raise argparse.ArgumentTypeError("range must be start,stop with stop > start")
+    return values
+
+
 def seed_all(seed: int) -> None:
     random.seed(seed)
     np.random.seed(seed)

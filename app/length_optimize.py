@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
-"""Length-aware edge refinement and sub-pixel lamella measurement.
+"""Independent sub-pixel lamella-length audit and optional refinement.
 
-This stage never uses generative pixels.  It restores raw-data weight around
-horizontal endpoints, applies a small symmetric/zero-phase edge refinement,
-then measures each lamella on both the source and refined image.  Results are
-reported in pixels unless a calibrated pixel size is supplied.
+The default geometry-only mode does not change input pixels. If optional
+zero-phase sharpening is requested, it operates on enhanced pixels only; raw
+pixels are never written back. Results are reported in pixels unless a
+calibrated pixel size is supplied.
 """
 
 from __future__ import annotations
@@ -216,45 +216,32 @@ def length_aware_refine(
     raw = source[ys, xs]
     current = denoised[ys, xs]
 
+    # The raw image supplies geometry gates only.  Its pixel values are never
+    # copied into the already denoised/enhanced candidate.
     raw_smooth = gaussian_filter(raw, sigma=0.70)
     gx = np.abs(sobel(raw_smooth, axis=1))
     gy = np.abs(sobel(raw_smooth, axis=0))
     tx = float(np.percentile(gx, 86.0)) + 1e-8
     ty = float(np.percentile(gy, 70.0)) + 1e-8
-    horizontal_endpoint_gate = 1.0 - np.exp(-((gy / ty) ** 2))
-    lateral_edge_gate = 1.0 - np.exp(-((gx / tx) ** 2))
-
-    # At horizontal endpoints restore most of the raw-data contribution before
-    # sharpening. Lateral plate edges retain a smaller restoration component.
-    restore_gate = np.clip(1.00 * horizontal_endpoint_gate + 0.20 * lateral_edge_gate, 0.0, 1.00)
-    endpoint_band = np.zeros_like(restore_gate, dtype=np.float32)
-    for start, stop in (top_range, bottom_range):
-        local_start = max(0, start - roi.y0)
-        local_stop = min(endpoint_band.shape[0], stop - roi.y0)
-        if local_stop > local_start:
-            endpoint_band[local_start:local_stop, :] = 1.0
-    restore_gate = np.maximum(restore_gate, endpoint_band)
-    anchored = current + restore_gate * (raw - current)
-
-    smooth = gaussian_filter(anchored, sigma=sharpen_sigma)
-    detail = anchored - smooth
+    smooth = gaussian_filter(current, sigma=sharpen_sigma)
+    detail = current - smooth
     edge_strength = np.hypot(gx / tx, gy / ty)
     refine_gate = 1.0 - np.exp(-(edge_strength**2))
-    candidate = anchored + float(sharpen_amount) * refine_gate * detail
+    candidate = current + float(sharpen_amount) * refine_gate * detail
 
     sigma_n = base.noise_sigma_mad(raw)
     cap = max(2.75 * sigma_n, 2.0 / 65535.0)
-    candidate = raw + np.clip(candidate - raw, -cap, cap)
+    candidate = current + np.clip(candidate - current, -cap, cap)
     out = base.feather_insert(denoised, np.clip(candidate, 0.0, 1.0).astype(np.float32), roi, ramp=18)
     return out, {
         "sharpen_amount": sharpen_amount,
         "sharpen_sigma": sharpen_sigma,
-        "raw_anchor_endpoint_weight_max": 1.00,
-        "raw_anchor_lateral_weight_max": 0.20,
-        "raw_anchor_endpoint_ranges": [list(top_range), list(bottom_range)],
+        "raw_pixel_writeback": False,
+        "raw_geometry_guide": "Sobel gates only",
+        "endpoint_ranges": [list(top_range), list(bottom_range)],
         "estimated_noise_sigma_normalized": sigma_n,
         "change_cap_normalized": cap,
-        "operation": "symmetric Gaussian unsharp; zero phase; endpoint raw anchoring",
+        "operation": "symmetric Gaussian unsharp of enhanced pixels only; zero phase",
     }
 
 
@@ -326,13 +313,18 @@ def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--source", type=Path, required=True, help="original uint16 TIFF")
     ap.add_argument("--denoised", type=Path, required=True, help="measurement-chain uint16 TIFF")
+    ap.add_argument(
+        "--geometry-guide",
+        type=Path,
+        help="fixed pre-stage image used only to detect centers and track paths",
+    )
     ap.add_argument("--outdir", type=Path, required=True)
     ap.add_argument("--refine-roi", type=base.parse_roi, default=base.Roi(600, 1230, 320, 1880))
     ap.add_argument("--left-body-roi", type=base.parse_roi, default=base.Roi(720, 1060, 370, 970))
     ap.add_argument("--right-body-roi", type=base.parse_roi, default=base.Roi(720, 1060, 1220, 1830))
     ap.add_argument("--top-range", type=str, default="600,790")
     ap.add_argument("--bottom-range", type=str, default="1010,1240")
-    ap.add_argument("--sharpen-amount", type=float, default=0.24)
+    ap.add_argument("--sharpen-amount", type=float, default=0.0, help="0 performs geometry-only audit without changing pixels")
     ap.add_argument("--sharpen-sigma", type=float, default=0.90)
     ap.add_argument("--pixel-size", type=float, help="calibrated physical units per pixel")
     ap.add_argument("--unit", default="mm", help="unit used with --pixel-size")
@@ -344,6 +336,14 @@ def main() -> None:
     denoised, denoised_info = base.load_gray(args.denoised)
     if source.shape != denoised.shape:
         raise ValueError(f"shape mismatch: source={source.shape}, denoised={denoised.shape}")
+    if args.geometry_guide:
+        geometry_guide, geometry_guide_info = base.load_gray(args.geometry_guide)
+        if geometry_guide.shape != source.shape:
+            raise ValueError(
+                f"shape mismatch: source={source.shape}, geometry_guide={geometry_guide.shape}"
+            )
+    else:
+        geometry_guide, geometry_guide_info = denoised, denoised_info
     refine_roi = args.refine_roi.clamp(source.shape)
     left_roi = args.left_body_roi.clamp(source.shape)
     right_roi = args.right_body_roi.clamp(source.shape)
@@ -357,9 +357,9 @@ def main() -> None:
     )
     rows: list[dict] = []
     for side, roi in (("left", left_roi), ("right", right_roi)):
-        centers, pitch, _ = detect_centers(denoised, roi)
+        centers, pitch, _ = detect_centers(geometry_guide, roi)
         for index, center in enumerate(centers, start=1):
-            path_x = track_ridge(denoised, center, pitch, top_range[0], bottom_range[1])
+            path_x = track_ridge(geometry_guide, center, pitch, top_range[0], bottom_range[1])
             raw_m = measure_endpoints(source, center, pitch, top_range, bottom_range, path_x=path_x)
             enhanced_m = measure_endpoints(
                 refined, center, pitch, top_range, bottom_range, hint=raw_m, path_x=path_x
@@ -459,9 +459,27 @@ def main() -> None:
         [[float(r["top_edge_snr"]), float(r["bottom_edge_snr"])] for r in rows], dtype=np.float64
     )
     passed = sum(r["quality"] == "pass" for r in rows)
+    reliable_mask = np.asarray([r["quality"] == "pass" for r in rows], dtype=bool)
+    reliable_endpoint_shifts = endpoint_shifts[reliable_mask]
+    reliable_length_deltas = length_deltas[reliable_mask]
+    if not len(reliable_length_deltas):
+        raise RuntimeError("No reliable raw endpoint references were detected")
+    geometry_only_audit = bool(abs(args.sharpen_amount) < 1e-12)
+    appearance_guardrail = bool(
+        geometry_only_audit
+        or (
+            structural_similarity(before_crop, after_crop, data_range=1.0) >= 0.990
+            and np.median(gradient_gains) >= 1.0
+        )
+    )
     qa = {
         "source": source_info,
         "denoised": denoised_info,
+        "geometry_guide": {
+            **geometry_guide_info,
+            "role": "fixed center/path coordinates only",
+            "pixel_writeback": False,
+        },
         "refinement": refine_info,
         "rois": {
             "refine": asdict(refine_roi),
@@ -479,13 +497,16 @@ def main() -> None:
         "pass_count": passed,
         "review_count": len(rows) - passed,
         "pass_fraction": passed / max(1, len(rows)),
+        "audit_mode": "geometry_only_no_pixel_change" if geometry_only_audit else "optional_visual_refinement",
         "refine_roi_ssim_vs_source": float(structural_similarity(before_crop, after_crop, data_range=1.0)),
-        "endpoint_shift_abs_median_px": float(np.median(np.abs(endpoint_shifts))),
-        "endpoint_shift_abs_p95_px": float(np.percentile(np.abs(endpoint_shifts), 95.0)),
-        "endpoint_shift_abs_max_px": float(np.max(np.abs(endpoint_shifts))),
-        "length_delta_abs_median_px": float(np.median(np.abs(length_deltas))),
-        "length_delta_abs_p95_px": float(np.percentile(np.abs(length_deltas), 95.0)),
-        "length_delta_abs_max_px": float(np.max(np.abs(length_deltas))),
+        "endpoint_shift_abs_median_px": float(np.median(np.abs(reliable_endpoint_shifts))),
+        "endpoint_shift_abs_p95_px": float(np.percentile(np.abs(reliable_endpoint_shifts), 95.0)),
+        "endpoint_shift_abs_max_px": float(np.max(np.abs(reliable_endpoint_shifts))),
+        "length_delta_abs_median_px": float(np.median(np.abs(reliable_length_deltas))),
+        "length_delta_abs_p95_px": float(np.percentile(np.abs(reliable_length_deltas), 95.0)),
+        "length_delta_abs_max_px": float(np.max(np.abs(reliable_length_deltas))),
+        "all_layers_endpoint_shift_abs_max_px_diagnostic": float(np.max(np.abs(endpoint_shifts))),
+        "all_layers_length_delta_abs_max_px_diagnostic": float(np.max(np.abs(length_deltas))),
         "length_uncertainty_median_px": float(np.median(uncertainties)),
         "length_uncertainty_p95_px": float(np.percentile(uncertainties, 95.0)),
         "edge_snr_median_source": float(np.median(source_snr)),
@@ -497,16 +518,22 @@ def main() -> None:
             "per_layer_top_shift_abs_max_px": 0.75,
             "per_layer_bottom_shift_abs_max_px": 0.75,
             "per_layer_length_delta_abs_max_px": 1.0,
+            "endpoint_shift_abs_p95_max_px": 0.35,
+            "length_delta_abs_p95_max_px": 0.50,
             "edge_snr_min": 4.0,
             "length_uncertainty_max_px": args.uncertainty_max,
             "required_pass_fraction": 0.90,
             "refine_roi_ssim_min": 0.990,
             "edge_gradient_gain_median_min": 1.0,
+            "appearance_checks_required_only_when_sharpening": True,
         },
         "guardrail_pass": bool(
             passed / max(1, len(rows)) >= 0.90
-            and structural_similarity(before_crop, after_crop, data_range=1.0) >= 0.990
-            and np.median(gradient_gains) >= 1.0
+            and appearance_guardrail
+            and np.percentile(np.abs(reliable_endpoint_shifts), 95.0) <= 0.35
+            and np.max(np.abs(reliable_endpoint_shifts)) <= 0.75
+            and np.percentile(np.abs(reliable_length_deltas), 95.0) <= 0.50
+            and np.max(np.abs(reliable_length_deltas)) <= 1.00
         ),
         "data_quality": {
             "native_bit_depth": 16,

@@ -7,6 +7,8 @@ results_quality/*
 !results_quality/.gitkeep
 results_length/*
 !results_length/.gitkeep
+results_sota/*
+!results_sota/.gitkeep
 
 *.tif
 *.tiff

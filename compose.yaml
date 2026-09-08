@@ -1,4 +1,85 @@
 services:
+  ct-v15-dual:
+    build:
+      context: .
+      dockerfile: Dockerfile.cpu
+    image: ct-generative-blind-restore:cpu
+    entrypoint: ["python", "app/run_v15_pipeline.py"]
+    volumes:
+      - ./input:/data/input:ro
+      - ./results_generative_shape_v15_dual_output:/data/results_v15
+    command:
+      - --source
+      - /data/input/source_16bit.tif
+      - --guide
+      - /data/input/measurement_guide_16bit.tif
+      - --generated
+      - /data/input/generative_candidate_visual_only.png
+      - --outdir
+      - /data/results_v15
+
+  ct-v11-generative:
+    build:
+      context: .
+      dockerfile: Dockerfile.cpu
+    image: ct-generative-blind-restore:cpu
+    entrypoint: ["python", "app/run_v11_pipeline.py"]
+    volumes:
+      - ./input:/data/input:ro
+      - ./results_generative_shape_v11_no_registration:/data/results_v11
+    command:
+      - --source
+      - /data/input/source_16bit.tif
+      - --guide
+      - /data/input/measurement_guide_16bit.tif
+      - --generated
+      - /data/input/generative_candidate_visual_only.png
+      - --outdir
+      - /data/results_v11
+
+  ct-v14-registration:
+    profiles: ["registration-experimental"]
+    build:
+      context: .
+      dockerfile: Dockerfile.cpu
+    image: ct-generative-blind-restore:cpu
+    entrypoint: ["python", "app/run_v14_pipeline.py"]
+    volumes:
+      - ./input:/data/input:ro
+      - ./results_generative_shape_v14_registration:/data/results_v14
+    command:
+      - --source
+      - /data/input/source_16bit.tif
+      - --guide
+      - /data/input/measurement_guide_16bit.tif
+      - --generated
+      - /data/input/generative_candidate_visual_only.png
+      - --registration-method
+      - piecewise-edge-preserving
+      - --outdir
+      - /data/results_v14
+
+  ct-sota:
+    build:
+      context: .
+      dockerfile: Dockerfile.cpu
+    image: ct-generative-blind-restore:cpu
+    entrypoint: ["python", "app/run_sota_pipeline.py"]
+    volumes:
+      - ./input:/data/input:ro
+      - ./results_sota:/data/results_sota
+    command:
+      - --source
+      - /data/input/source_16bit.tif
+      - --generative-prior
+      - /data/input/generative_candidate_visual_only.png
+      - --outdir
+      - /data/results_sota
+      - --iterations
+      - "600"
+      - --device
+      - cpu
+
   ct-restore-cpu:
     build:
       context: .
@@ -41,15 +122,17 @@ services:
     entrypoint: ["python", "app/length_optimize.py"]
     volumes:
       - ./input:/data/input:ro
-      - ./results:/data/results:ro
+      - ./results_quality:/data/results_quality:ro
       - ./results_length:/data/results_length
     command:
       - --source
       - /data/input/source_16bit.tif
       - --denoised
-      - /data/results/MEASUREMENT_blind_denoised_16bit.tif
+      - /data/results_quality/QUALITY_boundary_preserved_16bit.tif
       - --outdir
       - /data/results_length
+      - --sharpen-amount
+      - "0"
 
   ct-quality:
     build:

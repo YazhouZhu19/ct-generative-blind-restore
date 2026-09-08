@@ -1,0 +1,10 @@
+*
+!Dockerfile.cpu
+!Dockerfile.cuda
+!requirements-common.txt
+!requirements-cpu.txt
+!requirements-cuda.txt
+!app/
+!app/**
+app/__pycache__/
+app/**/*.pyc

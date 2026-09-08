@@ -26,3 +26,20 @@ generative_candidates:
     role: domain-trained diffusion denoising for planar X-ray
     selected_for_measurement: false
     note: Promising when trained on matched X-ray physics/noise; not a zero-shot replacement for industrial CT calibration.
+
+preserved_profiles:
+  - name: v15-dual-output
+    entrypoint: app/run_v15_pipeline.py
+    visual_profile: v13 with blind-guide detail weight 0.90
+    measurement_pixel_source: same-coordinate blind-denoised guide only
+    generated_pixel_weight_in_measurement_output: 0.0
+    spatial_transform_after_guide: none
+    status: recommended when downstream lamella/interlayer measurement is required
+    warning: Physical measurements still require calibrated pixel size and scanner PSF/MTF validation.
+  - name: v11-stable
+    entrypoint: app/run_v11_pipeline.py
+    configuration: config/v11_profile.json
+    geometry_guide: registered blind-denoised image
+    direct_guide_texture_weight: 0.0
+    status: preserved generative visual workflow
+    warning: Generated pixels are visual-only and not metrology-certified.
