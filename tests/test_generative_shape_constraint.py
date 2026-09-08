@@ -15,9 +15,34 @@ import generative_shape_constraint as shape  # noqa: E402
 import generative_postprocess as postprocess  # noqa: E402
 import generative_registration as registration  # noqa: E402
 import generative_shape_project as project  # noqa: E402
+import measurement_quality_optimize as measurement_quality  # noqa: E402
 
 
 class GenerativeShapeConstraintTests(unittest.TestCase):
+    def test_v16_strict_guardrail_accepts_identity_and_rejects_width_drift(self) -> None:
+        baseline = {
+            "endpoint_shift_abs_p95_px": 0.0,
+            "length_delta_abs_p95_px": 0.05,
+            "lamella_width_relative_error_p95": 0.0,
+            "lamella_dual_evidence_pass_count": 99,
+            "interlayer_width_relative_error_p95": 0.0,
+            "interlayer_length_abs_error_p95_px": 0.08,
+            "interlayer_dual_evidence_pass_count": 96,
+            "edge_clarity": 0.30,
+            "low_frequency_correlation": 1.0,
+            "mid_frequency_correlation": 1.0,
+            "gradient_magnitude_correlation": 1.0,
+            "lamella_axial_detail_correlation_median": 1.0,
+            "lamella_axial_detail_correlation_p10": 1.0,
+        }
+        passed, _ = measurement_quality.strict_guardrail(baseline, baseline, 1.0)
+        self.assertTrue(passed)
+        drifted = dict(baseline)
+        drifted["lamella_width_relative_error_p95"] = 0.016
+        passed, checks = measurement_quality.strict_guardrail(drifted, baseline, 1.0)
+        self.assertFalse(passed)
+        self.assertFalse(checks["lamella_width_p95_le_1_5_percent"])
+
     def test_transverse_width_recovers_synthetic_plate(self) -> None:
         image = np.full((80, 90), 0.1, dtype=np.float32)
         image[:, 43:48] = 0.9

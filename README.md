@@ -10,6 +10,8 @@ The preserved generative baseline is **v11 stable without registration**. No tra
 
 For lamella and interlayer measurement, the latest recommended architecture is **v15 dual output**. It emits a clean generative companion for visual inspection and a separate full-resolution measurement-assist image whose pixel contribution from the generator is exactly zero. The latter retains every local structure from the same-coordinate blind-denoised guide and never analytically redraws a lamella. See the [English v15 report](STRUCTURE_CARRIER_DUAL_OUTPUT_V15_REPORT_EN.md) and [Chinese v15 report](STRUCTURE_CARRIER_DUAL_OUTPUT_V15_REPORT.md).
 
+The optional **v16 measurement-quality refinement** starts from the v15 measurement carrier and searches only guide-derived, zero-phase, capped residual-denoising candidates. On the supplied image, every nonzero lamella-body strength was rejected by per-layer dual-evidence checks; the selected profile therefore freezes all lamella pixels and applies non-local means only to the central solid region. It reduces central high-frequency noise by `9.77%` while retaining zero lamella/interlayer width error, zero endpoint P95 error, and `0.99963` SSIM against v15. See the [English v16 report](MEASUREMENT_QUALITY_V16_REPORT_EN.md) and [Chinese v16 report](MEASUREMENT_QUALITY_V16_REPORT.md).
+
 The organized code, documentation, runtime-data boundaries, and release archives are indexed in [`PROJECT_STRUCTURE.md`](PROJECT_STRUCTURE.md).
 
 Versions v12 and v13 remain available as research profiles; they do not alter the frozen v11 profile or archived v11 result. v15 reuses a tuned v13 projection only for its explicitly named `VISUAL_ONLY` companion. See the [v12 English](GENERATIVE_RAW_DUAL_EVIDENCE_V12_REPORT_EN.md), [v12 Chinese](GENERATIVE_RAW_DUAL_EVIDENCE_V12_REPORT.md), [v13 English](GENERATIVE_BLIND_GUIDE_DETAIL_V13_REPORT_EN.md), and [v13 Chinese](GENERATIVE_BLIND_GUIDE_DETAIL_V13_REPORT.md) reports. Generative pixels are never used in the v15 measurement output.
@@ -47,6 +49,23 @@ The two final products are:
 - `FINAL_MEASUREMENT_structure_preserved_2200x1600_16bit.tif`: full 2200×1600 blind-guide structural carrier; generator weight is zero and no warp, resize, intensity remapping, or analytic lamella replacement occurs after the guide is formed.
 
 On the supplied image, the measurement branch retained 100 lamellae and 98 interlayers. Lamella-width median/P95 error against the guide was `0% / 0%`, endpoint P95 error was `0 px`, interlayer-width P95 error was `0%`, and interlayer-length P95 error was `0.080 px`. Low-, mid-frequency, gradient, and per-lamella axial-detail correlations were effectively `1.0`. The visual companion retained a `17.6%` edge-clarity gain over the raw image, while its generated pixels remain explicitly excluded from metrology.
+
+To apply the optional v16 quality refinement after v15:
+
+```bash
+docker compose run --rm ct-v16-measurement-quality
+```
+
+or:
+
+```bash
+python app/measurement_quality_optimize.py \
+  --source input/source_16bit.tif \
+  --input results_generative_shape_v15_dual_output/FINAL_MEASUREMENT_structure_preserved_2200x1600_16bit.tif \
+  --outdir results_generative_shape_v16_measurement_quality
+```
+
+The v15 image remains the immutable audit baseline. v16 is accepted only when its endpoint, length, lamella-width, interlayer-width/length, raw-nonregression, multiscale-detail, edge-retention, and SSIM checks all pass.
 
 ## Preserved v11 Guide-First Generative Workflow (Selected)
 

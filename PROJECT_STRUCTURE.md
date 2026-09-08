@@ -13,6 +13,14 @@ STRUCTURE_CARRIER_DUAL_OUTPUT_V15_REPORT*.md
 
 v15 emits an explicitly synthetic `FINAL_VISUAL_ONLY_*` companion and a separate `FINAL_MEASUREMENT_structure_preserved_*` image. The latter contains zero generated pixels, no analytic stripe replacement, and no post-guide resampling, warping, or intensity remapping.
 
+## v16 measurement-quality refinement
+
+- `app/measurement_quality_optimize.py`: searches guide-only, capped, zero-phase residual candidates under strict v15 geometry/detail guardrails.
+- `MEASUREMENT_QUALITY_V16_REPORT*.md`: bilingual method, rejection evidence, selected parameters, and limitations.
+- `ct-v16-measurement-quality`: container entry point.
+
+The selected current-image profile freezes lamella/interlayer pixels and denoises only the central solid region. v15 remains the immutable audit baseline.
+
 ## Preserved v11 release
 
 ```text

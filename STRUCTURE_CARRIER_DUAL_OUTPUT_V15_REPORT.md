@@ -83,7 +83,7 @@ Docker入口：
 docker compose run --rm ct-v15-dual
 ```
 
-核心实现位于 `app/generative_shape_project.py` 的 `structure_carrier_projection()`；单命令编排位于 `app/run_v15_pipeline.py`。本次在 `ct-generative-blind-restore:cpu` 容器中完成全流程验证，31项单元测试全部通过。
+核心实现位于 `app/generative_shape_project.py` 的 `structure_carrier_projection()`；单命令编排位于 `app/run_v15_pipeline.py`。本次在 `ct-generative-blind-restore:cpu` 容器中完成全流程验证；加入v16守卫测试后，当前32项单元测试全部通过。
 
 ## 5. 输出使用边界
 

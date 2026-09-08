@@ -1,4 +1,22 @@
 services:
+  ct-v16-measurement-quality:
+    build:
+      context: .
+      dockerfile: Dockerfile.cpu
+    image: ct-generative-blind-restore:cpu
+    entrypoint: ["python", "app/measurement_quality_optimize.py"]
+    volumes:
+      - ./input:/data/input:ro
+      - ./results_generative_shape_v15_dual_output:/data/results_v15:ro
+      - ./results_generative_shape_v16_measurement_quality:/data/results_v16
+    command:
+      - --source
+      - /data/input/source_16bit.tif
+      - --input
+      - /data/results_v15/FINAL_MEASUREMENT_structure_preserved_2200x1600_16bit.tif
+      - --outdir
+      - /data/results_v16
+
   ct-v15-dual:
     build:
       context: .

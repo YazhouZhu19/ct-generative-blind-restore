@@ -14,6 +14,8 @@
 
 > **v15 像素级结构一致性更新：** 长宽参数一致仍不足以保证局部缺口、起伏和夹层纹理一致。`app/run_v15_pipeline.py` 因此输出两张语义隔离的图：v13生成式结果只用于视觉观察；测量图全幅仅使用同坐标盲去噪结构载体，生成像素权重为0，并禁止重采样、配准、强度映射和解析层纹替换。详见 [`STRUCTURE_CARRIER_DUAL_OUTPUT_V15_REPORT.md`](STRUCTURE_CARRIER_DUAL_OUTPUT_V15_REPORT.md)。
 
+> **v16 测量质量更新：** `app/measurement_quality_optimize.py` 以v15结构载体为不可覆盖基线，搜索受端点保护、零相位、幅度受限的残差去噪候选。本图中所有非零层纹强度均被逐层双证据审计拒绝，最终仅对中央实体块执行非局部均值去噪，中央高频噪声下降9.77%，层纹与夹层几何指标不变。详见 [`MEASUREMENT_QUALITY_V16_REPORT.md`](MEASUREMENT_QUALITY_V16_REPORT.md)。
+
 ## 1. 任务目标
 
 输入是一张 1600 × 2200、单通道 uint16 工业 CT/射线 TIFF。希望达到：

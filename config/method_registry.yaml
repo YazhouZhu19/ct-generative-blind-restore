@@ -28,6 +28,14 @@ generative_candidates:
     note: Promising when trained on matched X-ray physics/noise; not a zero-shot replacement for industrial CT calibration.
 
 preserved_profiles:
+  - name: v16-measurement-quality
+    entrypoint: app/measurement_quality_optimize.py
+    input: v15 blind-denoised structure carrier
+    generated_pixel_weight: 0.0
+    selected_lamella_residual_strength: 0.0
+    selected_central_nlm_strength: 0.92
+    status: optional measurement-quality refinement after v15
+    warning: The v15 carrier remains the immutable audit baseline.
   - name: v15-dual-output
     entrypoint: app/run_v15_pipeline.py
     visual_profile: v13 with blind-guide detail weight 0.90
