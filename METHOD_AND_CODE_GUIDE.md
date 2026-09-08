@@ -20,6 +20,58 @@
 
 > **v18 规整边界与细节兼容实验：** `app/constrained_detail_fusion.py` 保留v17生成式去噪，只把v11有限宽几何场用于零相位边界/端点增强与夹层残差收缩；不写入解析片层像素。每个候选完成逐条层纹和夹层审计，退化结构局部恢复为v17。本图有74条层纹保留增强、26条自动回退，夹层高频噪声再下降0.472%，层纹宽度P95误差保持0.3407%。详见 [`CONSTRAINED_DETAIL_FUSION_V18_REPORT.md`](CONSTRAINED_DETAIL_FUSION_V18_REPORT.md)。
 
+> **v19 测量不变量分区恢复实验：** `app/structure_anchored_multiregion_denoise.py` 完整保留v17生成残差和v18规整边界，在其后把残余噪声拆为“层纹/夹层束、中央实体、端点外雾区、低结构背景”四区独立处理。层纹束只沿纵向滤波，端点包络像素逐位恢复为v18，并增加逐行FWHM、拓扑、回退比例及写盘后uint16复核。详见 [`MEASUREMENT_INVARIANT_ZONED_RESTORATION_V19_REPORT.md`](MEASUREMENT_INVARIANT_ZONED_RESTORATION_V19_REPORT.md)。
+
+本图的完整容器搜索选中`(stack, central, fog, flat)=(0.02, 0.50, 0.60, 0.50)`：中央实体、端点外雾区和低结构背景的固定高频残差分别下降9.51%、14.26%和11.99%，9/100条临界层纹被局部恢复；层纹/夹层宽度误差P95为0.3150%/0.2096%，逐行宽度漂移P95为0.003053 px，16位写回后的全部发布守卫通过。这里的残差下降是无真值条件下的代理量，不是绝对噪声误差。
+
+## v19 完整流程入口
+
+v19 是 v17→v18 生成式增强链之后的受审计去噪阶段，不替换前面的生成模型、增强或后处理。它需要原始16位图、非生成的v16结构载体和已经通过约束融合的v18图：
+
+```text
+原始16位图 ───────────────┐
+v16非生成结构载体 ────────┼→ 固定中心线/端点/宽度/夹层及审计基线
+v18生成增强候选 ──────────┘
+              ↓
+四分区零相位残差去噪
+  ├─ 完整层纹/夹层束：仅纵向，自适应Wiener，不跨厚度方向混合
+  ├─ 中央实体：独立强度
+  ├─ 端点外雾区：独立强度
+  └─ 低结构背景：独立强度
+              ↓
+端点包络逐位锚定 → 每三行FWHM复测 → 不安全层及相邻夹层局部回退
+              ↓
+uint16量化候选审计 → 写入TIFF → 重新读取 → 发布审计
+```
+
+默认 CPU 容器入口：
+
+```bash
+docker compose run --rm ct-v19-measurement-invariant-zoned
+```
+
+等价的直接运行命令：
+
+```bash
+python app/structure_anchored_multiregion_denoise.py \
+  --source input/source_16bit.tif \
+  --carrier results_generative_shape_v16_measurement_quality/FINAL_MEASUREMENT_v16_quality_enhanced_2200x1600_16bit.tif \
+  --input results_generative_shape_v18_clean_edges_detail_preserved/MEASUREMENT_CANDIDATE_v18_clean_edges_detail_preserved_16bit.tif \
+  --outdir results_generative_shape_v19_structure_anchored_multiregion
+```
+
+候选选择不是以观感单指标决定。每一档参数先量化为最终会写入TIFF的uint16像素，再同时检查：层纹和夹层数量、端点和长度漂移、聚合宽度、逐行局部宽度、边缘和多尺度细节相关性、分区噪声非退化、SSIM、硬锚点逐位一致以及局部回退比例。任何不安全层连同相邻夹层都恢复为同坐标v18像素；全流程不做尺寸变化、配准、形变或解析片层重绘。
+
+主要输出为：
+
+- `MEASUREMENT_CANDIDATE_v19_structure_anchored_multiregion_16bit.tif`：原尺寸、uint16候选图；
+- `MEASUREMENT_CANDIDATE_v19_structure_anchored_multiregion.png` 与 `MEASUREMENT_CANDIDATE_v19_comparison.png`：显示和前后对比；
+- `AUDIT_v19_multiregion_masks.png`：四区掩膜及保护区审计；
+- `lamella_v19_comparison.csv`、`interlayer_v19_comparison.csv`、`local_row_width_v19_comparison.csv`、`structure_detail_v19.csv`：逐结构数值证据；
+- `structure_anchored_multiregion_v19_metrics.json`：候选搜索、回退、全部守卫和写盘后发布审计的机器可读事实源。
+
+v19仍保留v17生成像素，因此“守卫通过”只表示当前自动审计没有发现超阈值结构退化，不等于计量认证。正式长度和厚度结论仍应以v16载体、导出的数值约束以及经像素尺寸和PSF/MTF标定的验证为准。
+
 ## 1. 任务目标
 
 输入是一张 1600 × 2200、单通道 uint16 工业 CT/射线 TIFF。希望达到：

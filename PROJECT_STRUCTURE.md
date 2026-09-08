@@ -38,6 +38,15 @@ Unlike v15/v16 measurement outputs, the v17 result contains generated residual p
 
 V18 writes no analytic ribbon pixels and performs no resize, registration, or warp. It retains generated v17 pixels and is therefore still a `MEASUREMENT_CANDIDATE`, with v16 and the exported numeric constraints remaining authoritative.
 
+## v19 measurement-invariant zoned restoration experiment
+
+- `app/structure_anchored_multiregion_denoise.py`: retains v17/v18, applies independently gated residual cleanup to the complete lamella/interlayer stacks, central solid, endpoint-exterior fog, and low-structure background, then performs selective per-layer rollback.
+- `tests/test_structure_anchored_multiregion_denoise.py`: covers identity behavior, endpoint hard anchors, transverse non-mixing, uint16 quantization, measurement-operator support, and row-wise width invariance.
+- `MEASUREMENT_INVARIANT_ZONED_RESTORATION_V19_REPORT*.md`: bilingual design, audit protocol, current-image evidence, and validation limits.
+- `ct-v19-measurement-invariant-zoned`: default CPU Compose entry point with read-only v16/v18 inputs and an isolated v19 result volume.
+
+V19 performs no resize, registration, warp, or analytic lamella redraw. Endpoint-envelope pixels are restored exactly, candidates are audited after uint16 quantization, and the written TIFF is reloaded for a second release audit. Because retained v17 generative pixels remain present, the result is labelled `MEASUREMENT_CANDIDATE`; v16 and the exported numeric constraints remain authoritative until calibrated multi-image validation.
+
 ## Preserved v11 release
 
 ```text
@@ -109,6 +118,16 @@ experiment/results_generative_shape_v15_dual_output/
   03_visual_detail_projection/
   04_measurement_structure_carrier/
   v15_release_manifest.json
+experiment/results_generative_shape_v19_structure_anchored_multiregion/
+  MEASUREMENT_CANDIDATE_v19_structure_anchored_multiregion_16bit.tif
+  MEASUREMENT_CANDIDATE_v19_structure_anchored_multiregion.png
+  MEASUREMENT_CANDIDATE_v19_comparison.png
+  AUDIT_v19_multiregion_masks.png
+  lamella_v19_comparison.csv
+  interlayer_v19_comparison.csv
+  local_row_width_v19_comparison.csv
+  structure_detail_v19.csv
+  structure_anchored_multiregion_v19_metrics.json
 ```
 
 `results_v11_size_locked` is the recommended organized result. The native generated candidate is retained for provenance, while its source-sized copy is created before post-processing; all enhancement operations, the projection input, and final PNG/TIFF therefore use exactly the same width and height as the source image.

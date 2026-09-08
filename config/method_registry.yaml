@@ -28,6 +28,19 @@ generative_candidates:
     note: Promising when trained on matched X-ray physics/noise; not a zero-shot replacement for industrial CT calibration.
 
 preserved_profiles:
+  - name: v19-measurement-invariant-zoned-restoration
+    entrypoint: app/structure_anchored_multiregion_denoise.py
+    input: v18 constrained-detail result plus v16 non-generated structural carrier
+    retained_generation: v17 bounded-residual generative pixels already accepted by v18
+    postprocess: independent zero-phase residual cleanup for axial lamella/interlayer stacks, central solid, endpoint-exterior fog, and low-structure background
+    hard_anchor: exact same-coordinate v18 endpoint-envelope pixels
+    invariance: uint16 topology, endpoint, length, aggregate FWHM, every-third-row FWHM, edge/detail, regional-noise, and SSIM audits
+    rollback: every unsafe lamella and adjacent interlayer is restored to exact v18 pixels; excessive rollback is rejected
+    analytic_renderer_pixel_writeback: false
+    spatial_transform: none
+    resampling: none
+    status: measurement candidate; requires calibrated multi-image validation
+    warning: Generated v17 pixels remain present; the non-generated v16 carrier and exported numeric constraints remain authoritative.
   - name: v18-clean-boundary-detail-preserving-fusion
     entrypoint: app/constrained_detail_fusion.py
     input: v17 structure-conditioned result plus v16 structural carrier

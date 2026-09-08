@@ -1,8 +1,8 @@
 # Generative-Prior Blind CT Denoising with Geometry-Preserving Enhancement
 
-This repository contains a containerized workflow for single-image blind denoising, measurement-aware enhancement, and lamella-length analysis on 16-bit industrial CT/X-ray images. The current v8 path combines an adaptive re-visible Poisson-Gaussian blind model, a safely clipped generative low-frequency prior, geometry losses during training, transverse coordinate anchors during data projection, geometry-locked strong axial denoising, the complete original enhancement/post-processing chain, boundary cleanup, hybrid residual denoising, and an independent fixed-guide per-lamella audit.
+This repository contains a containerized workflow for single-image blind denoising, measurement-aware enhancement, and lamella/interlayer analysis on 16-bit industrial CT/X-ray images. The latest experimental path is v19: it retains the v17 structure-conditioned generator and v18 finite-width cleanup, then adds measurement-invariant zoned restoration, exact endpoint-envelope anchors, per-row FWHM checks, selective rollback, and a uint16 write/read release audit. The non-generated v16 carrier remains the authoritative measurement fallback.
 
-For the latest work, see the [English v8 report](GEOMETRY_LOCKED_DIRECTIONAL_V8_REPORT_EN.md) or [Chinese v8 report](GEOMETRY_LOCKED_DIRECTIONAL_V8_REPORT.md). The v7 residual stage remains documented in its [English](RESIDUAL_DENOISE_V7_REPORT_EN.md) and [Chinese](RESIDUAL_DENOISE_V7_REPORT.md) reports. Boundary cleanup is documented in the v6 reports. The complete legacy-to-current code guide is in [`METHOD_AND_CODE_GUIDE.md`](METHOD_AND_CODE_GUIDE.md).
+For the latest work, see the [English v19 report](MEASUREMENT_INVARIANT_ZONED_RESTORATION_V19_REPORT_EN.md) or [Chinese v19 report](MEASUREMENT_INVARIANT_ZONED_RESTORATION_V19_REPORT.md). Earlier v6-v18 reports remain available as an auditable development history. The complete legacy-to-current code guide is in [`METHOD_AND_CODE_GUIDE.md`](METHOD_AND_CODE_GUIDE.md).
 
 The actual Docker Desktop build and end-to-end smoke run are recorded in [`CONTAINER_VALIDATION.md`](CONTAINER_VALIDATION.md).
 
@@ -15,6 +15,10 @@ The optional **v16 measurement-quality refinement** starts from the v15 measurem
 The experimental **v17 structure-carrier-conditioned diffusion** path makes the structural carrier an explicit generator condition rather than a post-hoc reference. A compact bounded-residual DDIM receives carrier intensity, low-frequency appearance, x/y gradients, curved centerlines, finite-width boundaries, endpoints, interlayers, confidence, and uncertainty. Its training objective includes diffusion, carrier, edge, width, endpoint, interlayer, boundary-field, and midscale-detail terms. On the supplied image the accepted generated residual strength is `0.85`; relative to v16, lamella axial noise decreases `1.05%`, central high-frequency noise decreases `2.67%`, and flat-region noise decreases `1.51%`, with `0.34%` lamella-width P95 error, `0.00043 px` endpoint P95 error, and `0.999968` SSIM. Because generated pixels are present, the output is explicitly a `MEASUREMENT_CANDIDATE`, not a calibrated replacement for v16. See the [English v17 report](STRUCTURE_CONDITIONED_DIFFUSION_V17_REPORT_EN.md) and [Chinese v17 report](STRUCTURE_CONDITIONED_DIFFUSION_V17_REPORT.md).
 
 The experimental **v18 constrained-detail fusion** combines v11's finite-width localization and closed-loop per-structure acceptance with v17's generated denoising. It applies only zero-phase symmetric cleanup to existing v17 pixels, exports row-wise carrier width trajectories, and restores every regressing lamella and adjacent gap to the exact v17 baseline. On the supplied image, 74 lamellae retain enhancement and 26 marginal lamellae are rolled back. Interlayer high-frequency noise decreases another `0.472%`; lamella-width P95 error remains `0.3407%`, endpoint P95 error is `0.00459 px`, and axial-detail correlation is `0.999986`. No analytic ribbon pixels, resize, registration, or warp are used. See the [English v18 report](CONSTRAINED_DETAIL_FUSION_V18_REPORT_EN.md) and [Chinese v18 report](CONSTRAINED_DETAIL_FUSION_V18_REPORT.md).
+
+The experimental **v19 measurement-invariant zoned restoration** retains the complete v17 generative and v18 constrained-detail chain, then separates residual cleanup into four independently gated regions: the lamella/interlayer stacks, central solid, endpoint-exterior fog, and low-structure background. Stack filtering is axial only, endpoint-envelope pixels are restored exactly, every third longitudinal row is checked for transverse-width drift, and unsafe lamella/gap neighborhoods are selectively rolled back to v18. Candidate selection and the final write/read round trip are audited on the exact uint16 pixels. See the [English v19 report](MEASUREMENT_INVARIANT_ZONED_RESTORATION_V19_REPORT_EN.md), [Chinese v19 report](MEASUREMENT_INVARIANT_ZONED_RESTORATION_V19_REPORT.md), and the run-generated `structure_anchored_multiregion_v19_metrics.json` for the selected parameters and measured results. Generated v17 pixels remain present, so v19 is still a `MEASUREMENT_CANDIDATE`; the non-generated v16 carrier and exported numeric constraints remain authoritative until calibrated validation.
+
+On the supplied 2200×1600 image, the selected `(stack, central, fog, flat)` strengths are `(0.02, 0.50, 0.60, 0.50)`. Relative to v18, the fixed high-frequency residual proxy decreases by `9.51%` in the central solid, `14.26%` in endpoint-exterior fog, and `11.99%` in low-structure background. Nine of 100 marginal lamellae are restored exactly. The quantized output retains `0.3150%` lamella-width P95 error, `0.2096%` interlayer-width P95 error, `0.004734 px` endpoint P95 deviation, and `0.003053 px` row-width-drift P95; every post-write release gate passes. These are single-image internal audit values, not calibrated physical-accuracy claims.
 
 The organized code, documentation, runtime-data boundaries, and release archives are indexed in [`PROJECT_STRUCTURE.md`](PROJECT_STRUCTURE.md).
 
@@ -111,6 +115,28 @@ python app/constrained_detail_fusion.py \
 ```
 
 The canonical output is `MEASUREMENT_CANDIDATE_v18_clean_edges_detail_preserved_16bit.tif`. V11-style geometry fields localize the operation but contribute no analytic intensity pixels. Every modified structure is independently audited, and unsafe layers are locally restored to v17 before release.
+
+## Experimental v19 Measurement-Invariant Zoned Restoration
+
+After producing v16 and v18, run:
+
+```bash
+docker compose run --rm ct-v19-measurement-invariant-zoned
+```
+
+or directly:
+
+```bash
+python app/structure_anchored_multiregion_denoise.py \
+  --source input/source_16bit.tif \
+  --carrier results_generative_shape_v16_measurement_quality/FINAL_MEASUREMENT_v16_quality_enhanced_2200x1600_16bit.tif \
+  --input results_generative_shape_v18_clean_edges_detail_preserved/MEASUREMENT_CANDIDATE_v18_clean_edges_detail_preserved_16bit.tif \
+  --outdir results_generative_shape_v19_structure_anchored_multiregion
+```
+
+The canonical image is `MEASUREMENT_CANDIDATE_v19_structure_anchored_multiregion_16bit.tif`. The stage never resizes, registers, warps, or analytically redraws a lamella. It searches independent strengths for axial stack cleanup and three non-stack regions, restores protected endpoint-envelope pixels bit exactly, rejects excessive selective rollback, and validates topology, endpoint/length drift, aggregate and row-wise FWHM, edge/detail retention, regional noise, and SSIM. The final TIFF is reloaded and audited again before the run is declared complete.
+
+The same output directory contains the display preview and comparison, a zoned-mask audit, per-lamella and per-interlayer CSV files, row-wise width measurements, structure-detail statistics, and `structure_anchored_multiregion_v19_metrics.json`. Use the JSON as the source of truth for the selected candidate and all release checks; do not infer metrology validity from the preview alone.
 
 ## Preserved v11 Guide-First Generative Workflow (Selected)
 

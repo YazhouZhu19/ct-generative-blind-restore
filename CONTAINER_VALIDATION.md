@@ -152,3 +152,30 @@ The v18 full-resolution run completed in the same `ct-generative-blind-restore:c
 | Strict geometry/detail/edge/SSIM guardrails | pass |
 
 Every stronger candidate failed the lamella-width P95 gate and was rejected. The four v18 tests and all 37 pre-existing tests pass in the container.
+
+## v19 Measurement-Invariant Zoned Restoration Validation
+
+The CPU image was rebuilt after adding `app/structure_anchored_multiregion_denoise.py`, then the full 2200×1600 candidate grid was run directly from the image without bind-mounting application code. The run completed with exit code 0, selected `(stack, central, fog, flat) = (0.02, 0.50, 0.60, 0.50)`, wrote a uint16 TIFF, reloaded it, and passed the second release audit.
+
+- Rebuilt CPU image ID: `sha256:43b880db6e99c2218910a8daf876de1c3c1e4fa25d5d024b62613c37ea0a4c30`.
+- Final v19 TIFF SHA-256: `3db3b3b6221a929772ef477b356359123b8f9e0cf7c3cb26969cdd5fc7e1b80a`.
+- Container-read TIFF metadata: `(1600, 2200)`, `uint16`, intensity range `0..65535`.
+- All six v19-specific tests and the complete 47-test repository suite pass against the rebuilt image.
+
+| v19 check | Result |
+|---|---:|
+| Central-solid high-frequency residual reduction vs v18 | 9.51% |
+| Endpoint-exterior fog residual reduction vs v18 | 14.26% |
+| Low-structure background residual reduction vs v18 | 11.99% |
+| Lamella / interlayer residual reduction vs v18 | 0.0561% / 0.1097% |
+| Selectively restored marginal lamellae | 9 / 100 |
+| Lamella-width P95 error | 0.3150% |
+| Interlayer-width P95 error | 0.2096% |
+| Endpoint-shift P95 | 0.004734 px |
+| Row-wise width-drift P95 / maximum | 0.003053 / 0.051013 px |
+| Lamella / interlayer dual-evidence passes | 99 / 96 |
+| SSIM against v18 | 0.999892 |
+| Changed uint16 hard-anchor pixels | 0 |
+| Post-write geometry, topology, detail, SSIM, and anchor audit | pass |
+
+The residual reductions are fixed-operator high-frequency proxies rather than error against an unavailable noise-free ground truth. Generated v17 pixels remain in the v19 image, so the release is labelled `MEASUREMENT_CANDIDATE`; v16 and the exported numeric constraints remain the authoritative fallback until multi-image and calibrated-phantom validation is available.
