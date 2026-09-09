@@ -1,259 +1,51 @@
+x-cpu-build: &cpu-build
+  context: .
+  dockerfile: Dockerfile.cpu
+
+x-data-volumes: &data-volumes
+  - ./input:/data/input:ro
+  - ./output:/data/output
+
 services:
-  ct-v20-measurement-safe-postprocess:
-    build:
-      context: .
-      dockerfile: Dockerfile.cpu
-    image: ct-generative-blind-restore:cpu
-    entrypoint: ["python", "app/measurement_safe_postprocess.py"]
-    volumes:
-      - ./input:/data/input:ro
-      - ./results_generative_shape_v16_measurement_quality:/data/results_v16:ro
-      - ./results_generative_shape_v19_structure_anchored_multiregion:/data/results_v19:ro
-      - ./results_generative_shape_v20_measurement_safe_postprocess:/data/results_v20
+  enhance:
+    build: *cpu-build
+    image: ct-generative-blind-restore:focused-cpu
+    volumes: *data-volumes
     command:
       - --source
       - /data/input/source_16bit.tif
-      - --carrier
-      - /data/results_v16/FINAL_MEASUREMENT_v16_quality_enhanced_2200x1600_16bit.tif
-      - --input
-      - /data/results_v19/MEASUREMENT_CANDIDATE_v19_structure_anchored_multiregion_16bit.tif
-      - --outdir
-      - /data/results_v20
-
-  ct-v19-measurement-invariant-zoned:
-    build:
-      context: .
-      dockerfile: Dockerfile.cpu
-    image: ct-generative-blind-restore:cpu
-    entrypoint: ["python", "app/structure_anchored_multiregion_denoise.py"]
-    volumes:
-      - ./input:/data/input:ro
-      - ./results_generative_shape_v16_measurement_quality:/data/results_v16:ro
-      - ./results_generative_shape_v18_clean_edges_detail_preserved:/data/results_v18:ro
-      - ./results_generative_shape_v19_structure_anchored_multiregion:/data/results_v19
-    command:
-      - --source
-      - /data/input/source_16bit.tif
-      - --carrier
-      - /data/results_v16/FINAL_MEASUREMENT_v16_quality_enhanced_2200x1600_16bit.tif
-      - --input
-      - /data/results_v18/MEASUREMENT_CANDIDATE_v18_clean_edges_detail_preserved_16bit.tif
-      - --outdir
-      - /data/results_v19
-
-  ct-v18-constrained-detail-fusion:
-    build:
-      context: .
-      dockerfile: Dockerfile.cpu
-    image: ct-generative-blind-restore:cpu
-    entrypoint: ["python", "app/constrained_detail_fusion.py"]
-    volumes:
-      - ./input:/data/input:ro
-      - ./results_generative_shape_v16_measurement_quality:/data/results_v16:ro
-      - ./results_generative_shape_v17_structure_conditioned_diffusion:/data/results_v17:ro
-      - ./results_generative_shape_v18_clean_edges_detail_preserved:/data/results_v18
-    command:
-      - --source
-      - /data/input/source_16bit.tif
-      - --carrier
-      - /data/results_v16/FINAL_MEASUREMENT_v16_quality_enhanced_2200x1600_16bit.tif
       - --generated
-      - /data/results_v17/MEASUREMENT_CANDIDATE_v17_structure_conditioned_16bit.tif
-      - --outdir
-      - /data/results_v18
-
-  ct-v17-structure-diffusion:
-    build:
-      context: .
-      dockerfile: Dockerfile.cpu
-    image: ct-generative-blind-restore:cpu
-    entrypoint: ["python", "app/structure_conditioned_diffusion.py"]
-    volumes:
-      - ./input:/data/input:ro
-      - ./results_sota:/data/results_sota:ro
-      - ./results_generative_shape_v16_measurement_quality:/data/results_v16:ro
-      - ./results_generative_shape_v17_structure_conditioned_diffusion:/data/results_v17
-    command:
-      - --source
-      - /data/input/source_16bit.tif
-      - --carrier
-      - /data/results_v16/FINAL_MEASUREMENT_v16_quality_enhanced_2200x1600_16bit.tif
-      - --proposal
-      - /data/input/generative_candidate_visual_only.png
-      - --uncertainty
-      - /data/results_sota/01_sota_blind/MEASUREMENT_sota_uncertainty_float32.tif
-      - --outdir
-      - /data/results_v17
-      - --device
-      - cpu
-
-  ct-v16-measurement-quality:
-    build:
-      context: .
-      dockerfile: Dockerfile.cpu
-    image: ct-generative-blind-restore:cpu
-    entrypoint: ["python", "app/measurement_quality_optimize.py"]
-    volumes:
-      - ./input:/data/input:ro
-      - ./results_generative_shape_v15_dual_output:/data/results_v15:ro
-      - ./results_generative_shape_v16_measurement_quality:/data/results_v16
-    command:
-      - --source
-      - /data/input/source_16bit.tif
-      - --input
-      - /data/results_v15/FINAL_MEASUREMENT_structure_preserved_2200x1600_16bit.tif
-      - --outdir
-      - /data/results_v16
-
-  ct-v15-dual:
-    build:
-      context: .
-      dockerfile: Dockerfile.cpu
-    image: ct-generative-blind-restore:cpu
-    entrypoint: ["python", "app/run_v15_pipeline.py"]
-    volumes:
-      - ./input:/data/input:ro
-      - ./results_generative_shape_v15_dual_output:/data/results_v15
-    command:
-      - --source
-      - /data/input/source_16bit.tif
+      - /data/input/generative_candidate.png
       - --guide
       - /data/input/measurement_guide_16bit.tif
-      - --generated
-      - /data/input/generative_candidate_visual_only.png
       - --outdir
-      - /data/results_v15
+      - /data/output
+      - --geometry-config
+      - /workspace/config/reference_geometry.json
+      - --overwrite
 
-  ct-v11-generative:
-    build:
-      context: .
-      dockerfile: Dockerfile.cpu
-    image: ct-generative-blind-restore:cpu
-    entrypoint: ["python", "app/run_v11_pipeline.py"]
-    volumes:
-      - ./input:/data/input:ro
-      - ./results_generative_shape_v11_no_registration:/data/results_v11
+  enhance-auto-guide:
+    profiles: ["train-guide"]
+    build: *cpu-build
+    image: ct-generative-blind-restore:focused-cpu
+    volumes: *data-volumes
     command:
       - --source
       - /data/input/source_16bit.tif
-      - --guide
-      - /data/input/measurement_guide_16bit.tif
       - --generated
-      - /data/input/generative_candidate_visual_only.png
+      - /data/input/generative_candidate.png
       - --outdir
-      - /data/results_v11
-
-  ct-v14-registration:
-    profiles: ["registration-experimental"]
-    build:
-      context: .
-      dockerfile: Dockerfile.cpu
-    image: ct-generative-blind-restore:cpu
-    entrypoint: ["python", "app/run_v14_pipeline.py"]
-    volumes:
-      - ./input:/data/input:ro
-      - ./results_generative_shape_v14_registration:/data/results_v14
-    command:
-      - --source
-      - /data/input/source_16bit.tif
-      - --guide
-      - /data/input/measurement_guide_16bit.tif
-      - --generated
-      - /data/input/generative_candidate_visual_only.png
-      - --registration-method
-      - piecewise-edge-preserving
-      - --outdir
-      - /data/results_v14
-
-  ct-sota:
-    build:
-      context: .
-      dockerfile: Dockerfile.cpu
-    image: ct-generative-blind-restore:cpu
-    entrypoint: ["python", "app/run_sota_pipeline.py"]
-    volumes:
-      - ./input:/data/input:ro
-      - ./results_sota:/data/results_sota
-    command:
-      - --source
-      - /data/input/source_16bit.tif
-      - --generative-prior
-      - /data/input/generative_candidate_visual_only.png
-      - --outdir
-      - /data/results_sota
-      - --iterations
+      - /data/output
+      - --geometry-config
+      - /workspace/config/reference_geometry.json
+      - --blind-iterations
       - "600"
-      - --device
+      - --blind-device
       - cpu
+      - --overwrite
 
-  ct-restore-cpu:
-    build:
-      context: .
-      dockerfile: Dockerfile.cpu
-    image: ct-generative-blind-restore:cpu
-    volumes:
-      - ./input:/data/input:ro
-      - ./results:/data/results
-    command:
-      - --input
-      - /data/input/source_16bit.tif
-      - --outdir
-      - /data/results
-      - --device
-      - cpu
-
-  ct-restore-cuda:
-    profiles: ["cuda"]
-    build:
-      context: .
-      dockerfile: Dockerfile.cuda
-    image: ct-generative-blind-restore:cuda
-    gpus: all
-    volumes:
-      - ./input:/data/input:ro
-      - ./results:/data/results
-    command:
-      - --input
-      - /data/input/source_16bit.tif
-      - --outdir
-      - /data/results
-      - --device
-      - cuda
-
-  ct-length:
-    build:
-      context: .
-      dockerfile: Dockerfile.cpu
-    image: ct-generative-blind-restore:cpu
-    entrypoint: ["python", "app/length_optimize.py"]
-    volumes:
-      - ./input:/data/input:ro
-      - ./results_quality:/data/results_quality:ro
-      - ./results_length:/data/results_length
-    command:
-      - --source
-      - /data/input/source_16bit.tif
-      - --denoised
-      - /data/results_quality/QUALITY_boundary_preserved_16bit.tif
-      - --outdir
-      - /data/results_length
-      - --sharpen-amount
-      - "0"
-
-  ct-quality:
-    build:
-      context: .
-      dockerfile: Dockerfile.cpu
-    image: ct-generative-blind-restore:cpu
-    entrypoint: ["python", "app/quality_optimize.py"]
-    volumes:
-      - ./input:/data/input:ro
-      - ./results:/data/results:ro
-      - ./results_quality:/data/results_quality
-    command:
-      - --source
-      - /data/input/source_16bit.tif
-      - --baseline
-      - /data/results/MEASUREMENT_blind_denoised_16bit.tif
-      - --outdir
-      - /data/results_quality
+  tests:
+    build: *cpu-build
+    image: ct-generative-blind-restore:focused-cpu
+    entrypoint: ["python", "-m", "unittest", "discover", "-s", "tests", "-v"]
+    command: []

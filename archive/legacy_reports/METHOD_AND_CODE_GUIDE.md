@@ -24,6 +24,10 @@
 
 > **v20 测量锁定TV后处理实验：** `app/measurement_safe_postprocess.py` 不再次运行生成器，而是完整保留v17→v19结果，仅在中央ROI内核、端点外雾区和低结构背景的可写像素上叠加低强度Chambolle-TV残差。完整层纹/夹层束、测量算子支持、配置的中央ROI边框/环、强边缘和端点包络均从v19的uint16像素逐位锁定。详见 [`MEASUREMENT_SAFE_TV_POSTPROCESS_V20_REPORT.md`](MEASUREMENT_SAFE_TV_POSTPROCESS_V20_REPORT.md)。
 
+> **v21 加固后的原生网格结构细节精修实验：** `app/structure_detail_precision_refine.py` 在完整保留v17→v20链路的基础上重新开放层纹内部的低风险像素。它用原图、v16盲去噪载体和v20候选的同位置双证据估计轴向信号，以材料门控隔离深夹层，并在uint16量化后对每一行联合检查左右边界、中心、半高宽、边缘方向与强度。局部失败先恢复实际测量足迹，再交替执行逐行、逐层和逐夹层非回归投影。当前实现只做既有网格上的光度修改，未调用尺寸变换、配准、形变、重采样或解析层纹重绘；所谓“通过”仅指相对v20通过当前测量算子与阈值，不构成物理形状保证或计量认证。详见 [`STRUCTURE_DETAIL_PRECISION_V21_REPORT.md`](STRUCTURE_DETAIL_PRECISION_V21_REPORT.md)。
+
+> **v21 本图canonical事实：** 默认固定候选为`precision_balanced`，输出为`2200×1600` uint16。内存候选通过`58/58`个布尔项（57个共同发布检查加1个候选专用的选择性回退收敛检查），临时TIFF重读通过`57/57`个发布布尔项，完整测试为`73/73`；41,327行FWHM漂移P95/最大值为`0.0033176/0.0134691 px`，49,713/49,713个全行双边界样本的边位置P95/最大值为`0.0032686/0.019967 px`、中心P95/最大值为`0.0021844/0.00997894 px`。层纹/夹层宽度误差P95为`0.315009%/0.208542%`，定向噪声代理分别下降`0.0755986%/0.00455535%`。最终改变25,305个像素，全部位于允许写入域，中央高亮区和目标区外均为0；`L12–L14`仅恢复10,402个测量足迹像素，无整cell回退。相对v20的SSIM为`0.9999991876`，输出SHA-256为`21d8e2b85cc861d60000ce664f6a96bc4c09e5b4a9af8cd3c6d6e36e6c024f17`。
+
 > **v19 本图结果：** 完整容器搜索选中`(stack, central, fog, flat)=(0.02, 0.50, 0.60, 0.50)`：中央实体、端点外雾区和低结构背景的固定高频残差分别下降9.51%、14.26%和11.99%，9/100条临界层纹被局部恢复；层纹/夹层宽度误差P95为0.3150%/0.2096%，逐行宽度漂移P95为0.003053 px，16位写回后的全部发布守卫通过。这里的残差下降是无真值条件下的代理量，不是绝对噪声误差。
 
 ## v19 完整流程入口
@@ -126,6 +130,80 @@ python app/measurement_safe_postprocess.py \
 - `measurement_safe_postprocess_v20_metrics.json`：参数搜索、固定掩膜、全部守卫和写盘后二次审计。
 
 v20不做CLAHE、锐化、黑电平裁剪、尺寸变化、配准、形变、重采样或解析层纹重绘。当前配置的中央ROI边框/环被逐位锁定，并通过固定行列亚像素跟踪器审计；这不应表述为已经识别或认证了物理实体边界。它仍保留v17生成像素，因此输出仍是`MEASUREMENT_CANDIDATE`；正式计量继续以v16载体和经过标定的数值审计为准。完整测试集为59项，其中12项为v20专用测试。
+
+## v21 加固后的原生网格结构细节精修入口
+
+v21 接在 v20 后，不重新训练或采样生成器；它保留上游 v17 生成残差和 v18–v20 后处理结果，并针对层纹内部细节增加一层可审计的光度精修：
+
+```text
+原始16位图 ───────────────┐
+v16非生成结构载体 ────────┼→ 同坐标双证据、中心线/端点/宽度参考
+v20增强去噪候选 ──────────┘
+              ↓
+逐侧估计共享夹层背景 + 每根层纹轴向幅值
+零相位高低频分解 + 原图/v16同相证据保留真实细节
+              ↓
+半高点固定的单调横向曲线 + 深夹层材料门控 + 噪声尺度幅度上限
+              ↓
+uint16量化与端点硬锚定
+              ↓
+每行联合测量投影：左右边位置、中心、FWHM、符号纯度、边缘强度
+              ↕
+逐层/逐夹层严格非回归投影：中位宽度、长度、边缘清晰度、拓扑
+              ↓
+写入同目录临时2200×1600 uint16 TIFF → 重新读取 → 全逐行二次发布审计
+              ↓
+全部通过后原子替换canonical TIFF；失败则不覆盖既有canonical文件
+```
+
+`half_height_fixed_curve()` 的 `0/0.5/1` 固定点只是候选构造先验，并不单独证明实际检测器的FWHM不变：部署算子还会做`y±2`五行平均、横向平滑和局部峰/背景重估。因此v21必须在uint16量化后运行联合测量闭环；弱边或竞争峰行只要测量支持内发生变化就采用fail-closed回退，不能从最大值统计中删除。`--candidate-row-step`现在只作为诊断溯源字段记录，不能作为加速安全检查的开关；候选选择、足迹修复/投影和发布审计的所有安全决策均固定使用`row_step=1`。
+
+运行Compose前必须先准备好其挂载的三个输入：
+
+- `input/source_16bit.tif`：原始16位图；
+- `results_generative_shape_v16_measurement_quality/FINAL_MEASUREMENT_v16_quality_enhanced_2200x1600_16bit.tif`：非生成v16载体；
+- `results_generative_shape_v20_measurement_safe_postprocess/MEASUREMENT_CANDIDATE_v20_measurement_safe_postprocessed_16bit.tif`：已通过上游审计的v20输入。
+
+默认Compose服务已经固定`precision_balanced`和记录步长`1`。先构建镜像，再运行CPU容器：
+
+```bash
+docker compose build ct-v21-structure-detail-precision
+docker compose run --rm ct-v21-structure-detail-precision
+```
+
+等价的直接运行命令：
+
+```bash
+python app/structure_detail_precision_refine.py \
+  --source input/source_16bit.tif \
+  --carrier results_generative_shape_v16_measurement_quality/FINAL_MEASUREMENT_v16_quality_enhanced_2200x1600_16bit.tif \
+  --input results_generative_shape_v20_measurement_safe_postprocess/MEASUREMENT_CANDIDATE_v20_measurement_safe_postprocessed_16bit.tif \
+  --outdir results_generative_shape_v21_structure_detail_precision \
+  --candidate-name precision_balanced \
+  --candidate-row-step 1
+```
+
+本图canonical运行的最终事实如下；候选内存审计通过`58/58`个布尔项（含1个候选专用回退收敛项），临时TIFF写盘重读审计通过`57/57`个发布布尔项，仓库测试通过`73/73`项：
+
+- 41,327个逐行FWHM样本的绝对漂移P95/最大值为`0.0033176/0.0134691 px`；
+- 全行双边界覆盖为`49,713/49,713`，边位置偏移P95/最大值为`0.0032686/0.019967 px`，中心偏移P95/最大值为`0.0021844/0.00997894 px`；
+- 层纹/夹层宽度误差P95为`0.315009%/0.208542%`；
+- 固定定向噪声代理在层纹/夹层内分别下降`0.0755986%/0.00455535%`；
+- 25,305个变化像素全部位于允许写入域，中央高亮区和目标区外变化均为0；
+- `L12–L14`共恢复10,402个实际测量足迹像素，没有整cell回退；
+- 相对v20的SSIM为`0.9999991876`，最终TIFF SHA-256为`21d8e2b85cc861d60000ce664f6a96bc4c09e5b4a9af8cd3c6d6e36e6c024f17`。
+
+发布采用原子事务：程序先在目标目录写临时uint16 TIFF，重新读取并核对逐像素往返一致性及全部发布检查，全部通过后才原子替换canonical TIFF；异常或任一检查失败时删除临时文件，既有canonical TIFF保持不变。
+
+主要输出为：
+
+- `MEASUREMENT_CANDIDATE_v21_structure_detail_precision_16bit.tif`：原始 `2200×1600`、uint16候选图；
+- `MEASUREMENT_CANDIDATE_v21_structure_detail_precision.png` 与 `MEASUREMENT_CANDIDATE_v21_comparison.png`：显示预览和变化/作用域对比；
+- `MEASUREMENT_CANDIDATE_v21_boundary_overlay.png`：约束边界审计叠加图；
+- `lamella_v21_comparison.csv`、`interlayer_v21_comparison.csv`、`local_row_width_v21_comparison.csv`、`bilateral_boundary_v21_comparison.csv`、`axial_detail_v21_comparison.csv`：逐结构证据；
+- `structure_detail_precision_v21_metrics.json`：候选选择、局部回退、全部门控及写盘后二次审计的机器可读事实源。
+
+当前v21实现未执行坐标变换，只在既有`2200×1600`网格上改写允许的光度像素。上述结构结论仅表示最终uint16文件相对v20通过当前算子与阈值，不保证物理形状绝对不变。由于输入仍含v17生成像素，输出继续标记为`MEASUREMENT_CANDIDATE`；当前阈值来自单张图像的内部验证，不是计量认证，正式测量仍应保留v16载体、像素尺寸标定、PSF/MTF验证和多图/仿体验证。
 
 ## 1. 任务目标
 
@@ -465,21 +543,25 @@ SSIM 只作为一个整体变化上限，不能单独证明测量真实性。最
 ```text
 ct_generative_blind_restore/
 ├── app/
-│   ├── pipeline.py                  # 盲去噪、生成式后处理和基础 QA
-│   └── length_optimize.py           # 边缘优化、中心线跟踪和长度测量
+│   ├── pipeline.py                              # 基础盲去噪、视觉后处理和QA
+│   ├── run_sota_pipeline.py                     # v8测量链编排
+│   ├── run_v11_pipeline.py                      # 保留的v11生成约束链
+│   ├── run_v15_pipeline.py                      # v15视觉/测量双输出
+│   ├── measurement_quality_optimize.py          # v16测量载体精修
+│   ├── structure_conditioned_diffusion.py       # v17条件生成
+│   ├── constrained_detail_fusion.py             # v18约束细节融合
+│   ├── structure_anchored_multiregion_denoise.py # v19分区去噪
+│   ├── measurement_safe_postprocess.py          # v20测量锁定TV后处理
+│   ├── structure_detail_precision_refine.py     # v21加固精修与原子发布
+│   └── length_optimize.py                       # 独立长度测量与复核
 ├── config/
-│   └── method_registry.yaml         # SOTA 候选及适用边界
+│   ├── method_registry.yaml                     # 方法候选及适用边界
+│   └── v11_profile.json                         # v11冻结参数
 ├── input/
 │   ├── source_16bit.tif
 │   ├── reference_unpaired.jpg
 │   └── generative_candidate_visual_only.png
-├── results/
-│   ├── MEASUREMENT_blind_denoised_16bit.tif
-│   ├── MEASUREMENT_residual_float32.tif
-│   ├── MEASUREMENT_uncertainty_float32.tif
-│   ├── measurement_model.pt
-│   ├── run_manifest.json
-│   └── GENERATIVE_visual_only_postprocessed.*
+├── results*/                                  # 各版本运行产物与机器可读审计
 ├── results_length/
 │   ├── MEASUREMENT_length_optimized_16bit.tif
 │   ├── layer_lengths.csv
@@ -491,10 +573,11 @@ ct_generative_blind_restore/
 ├── requirements-common.txt
 ├── requirements-cpu.txt
 ├── README.md
-└── EXPERIMENT_REPORT.md
+├── METHOD_AND_CODE_GUIDE.md
+└── PROJECT_STRUCTURE.md
 ```
 
-所有算法实现集中在 `app/pipeline.py` 和 `app/length_optimize.py`，没有隐藏的训练脚本或私有模块。
+早期版本主要由`app/pipeline.py`和`app/length_optimize.py`承担；这不再是当前仓库的完整结构。v11–v21已拆分为上表所列的独立、可审计模块，完整文件与运行数据边界以[`PROJECT_STRUCTURE.md`](PROJECT_STRUCTURE.md)为准。
 
 ## 9. 不使用 Docker 直接运行
 

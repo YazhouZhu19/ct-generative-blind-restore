@@ -1,0 +1,18 @@
+{
+  "schema_version": 1,
+  "description": "Accepted 2200x1600 regression sample; image data is not committed",
+  "dimensions": {
+    "width": 2200,
+    "height": 1600
+  },
+  "input_sha256": {
+    "source_16bit_tif": "c851b8b55af28e81ab5feeca57e03038cb9f1dc31e3a00392a97305f77a7eac0",
+    "source_sized_generated_png": "dd2d20b4e13cdcbc831724355b89ce2ad961a3dc65f0bc2801c74f9abaa21af4",
+    "blind_guide_16bit_tif": "dd57a98c35f9c6053ec6319c8f29b1ca189a8dea8f01c318bebbcef655ad710a"
+  },
+  "expected": {
+    "selected_strength": 0.16,
+    "final_png_sha256": "e58ab1d2b553b55604ccab151388d31365c36d23af5ef54dd9809507981dee2d",
+    "final_tif_16bit_sha256": "952e852a50bab113fbe7bc405fce9e13c33d2e9a30695c27f7aa17b406096f5e"
+  }
+}

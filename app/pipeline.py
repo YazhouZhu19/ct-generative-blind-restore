@@ -1,17 +1,10 @@
 #!/usr/bin/env python3
-"""Dual-track restoration pipeline for 16-bit industrial CT/radiography.
+"""Shared image, ROI, blind-model, and measurement-QA primitives.
 
-The two tracks are intentionally kept separate:
-
-* ``measurement``: a single-image self-supervised blind denoiser inspired by
-  APR-RD's adjacent-pixel replacement idea.  It uses masked prediction,
-  uncertainty estimation and an edge/data-consistency gate.  This is the only
-  track that may be evaluated for metrology.
-* ``visual``: post-processes an externally generated candidate.  It is always
-  labelled VISUAL_ONLY because a generative prior can invent or remove layers.
-
-This is an engineering adaptation for one grayscale 16-bit image, not a claim
-to reproduce the full APR-RD or FoundIR-v2 training recipes.
+The supported workflow starts at :mod:`run_pipeline`; this module contains its
+low-level building blocks and a compact baseline denoiser used by the stronger
+blind-guide implementation. Generative output is always visual/measurement-assist
+data because a generator can invent or remove structures.
 """
 
 from __future__ import annotations

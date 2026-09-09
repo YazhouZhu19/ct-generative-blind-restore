@@ -1,0 +1,29 @@
+{
+  "schema_version": 1,
+  "name": "dual-lamella-reference-layout",
+  "reference_size": {
+    "width": 2200,
+    "height": 1600
+  },
+  "scale_coordinates_to_input": true,
+  "blind_denoise": {
+    "target_roi": [620, 1210, 320, 1880],
+    "left_roi": [700, 1110, 370, 970],
+    "right_roi": [700, 1110, 1220, 1830],
+    "left_body_roi": [720, 1060, 370, 970],
+    "right_body_roi": [720, 1060, 1220, 1830],
+    "top_range": [600, 790],
+    "bottom_range": [1010, 1240]
+  },
+  "structure_guidance": {
+    "left_roi": [720, 1060, 370, 970],
+    "right_roi": [720, 1060, 1220, 1830],
+    "top_range": [600, 790],
+    "bottom_range": [1010, 1240],
+    "central_lock_roi": [700, 1140, 985, 1205],
+    "strengths": [0.12, 0.16, 0.20, 0.24],
+    "maximum_horizontal_displacement_px": 5.0,
+    "maximum_vertical_displacement_px": 5.0,
+    "minimum_global_ssim": 0.965
+  }
+}

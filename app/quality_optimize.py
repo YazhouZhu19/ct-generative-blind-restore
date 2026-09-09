@@ -1,11 +1,9 @@
 #!/usr/bin/env python3
-"""Boundary-preserving quality refinement for the blind denoiser.
+"""Boundary and appearance guardrails for blind-guide candidate selection.
 
-The original edge/structure enhancement is selected unchanged, then a separate
-sub-pixel geometry stage moves enhanced pixels only. Raw data supplies endpoint
-coordinates but no raw pixels are written back. A final weak, structure-aware
-cleanup suppresses residual grain/fog away from strong edges. Final width,
-endpoint, length, SSIM, edge-retention and noise guardrails must all pass.
+Raw data supplies geometry evidence, but no raw pixels are written back. Width,
+endpoint, length, SSIM, edge-retention, and noise checks must pass before the
+blind-denoised guide is accepted.
 """
 
 from __future__ import annotations

@@ -1,479 +1,155 @@
-# Generative-Prior Blind CT Denoising with Geometry-Preserving Enhancement
+# CT Generative Blind Restore
 
-This repository contains a containerized workflow for single-image blind denoising, measurement-aware enhancement, and lamella/interlayer analysis on 16-bit industrial CT/X-ray images. The latest experimental path is v20: it retains the accepted v17 generator, v18 finite-width cleanup, and v19 zoned denoising, then adds measurement-locked, low-strength total-variation residual cleanup only in non-measurement zones. Complete lamella/interlayer stacks, deployed measurement-operator support, the configured central ROI border/ring, and other strong edges are copied bit-for-bit from v19. The non-generated v16 carrier remains the authoritative measurement fallback.
+A focused, reproducible enhancement pipeline for industrial CT images with two
+lamella stacks and a central block. This release freezes the workflow that
+produced the accepted result: the external generative candidate is resized to
+the native source canvas **immediately after generation**, then a blind-denoised
+measurement guide supplies ridge, endpoint, width, and spacing constraints for
+a bounded continuous 2-D warp.
 
-For the latest work, see the [English v20 report](MEASUREMENT_SAFE_TV_POSTPROCESS_V20_REPORT_EN.md) or [Chinese v20 report](MEASUREMENT_SAFE_TV_POSTPROCESS_V20_REPORT.md). Earlier reports, including the [English v19 report](MEASUREMENT_INVARIANT_ZONED_RESTORATION_V19_REPORT_EN.md) and [Chinese v19 report](MEASUREMENT_INVARIANT_ZONED_RESTORATION_V19_REPORT.md), remain available as an auditable development history. The complete legacy-to-current code guide is in [`METHOD_AND_CODE_GUIDE.md`](METHOD_AND_CODE_GUIDE.md).
+The current code replaces the historical v1-v21 experiment chain. It has one
+production entry point, one geometry profile, auditable intermediate files,
+CPU/CUDA containers, and tests.
 
-The actual Docker Desktop build and end-to-end smoke run are recorded in [`CONTAINER_VALIDATION.md`](CONTAINER_VALIDATION.md).
-
-The preserved generative baseline is **v11 stable without registration**. No translation, affine, piecewise, or deformable warp is applied. Its frozen entry point, parameters, expected metrics, package boundary, and reproduction commands are documented in the [English stable-release guide](V11_STABLE_RELEASE.md) and [Chinese stable-release guide](V11_STABLE_RELEASE_ZH.md). The technical method is documented in the [English v11 report](GENERATIVE_DENOISED_GUIDE_CONSTRAINT_V11_REPORT_EN.md) and [Chinese v11 report](GENERATIVE_DENOISED_GUIDE_CONSTRAINT_V11_REPORT.md).
-
-For lamella and interlayer measurement, the latest recommended architecture is **v15 dual output**. It emits a clean generative companion for visual inspection and a separate full-resolution measurement-assist image whose pixel contribution from the generator is exactly zero. The latter retains every local structure from the same-coordinate blind-denoised guide and never analytically redraws a lamella. See the [English v15 report](STRUCTURE_CARRIER_DUAL_OUTPUT_V15_REPORT_EN.md) and [Chinese v15 report](STRUCTURE_CARRIER_DUAL_OUTPUT_V15_REPORT.md).
-
-The optional **v16 measurement-quality refinement** starts from the v15 measurement carrier and searches only guide-derived, zero-phase, capped residual-denoising candidates. On the supplied image, every nonzero lamella-body strength was rejected by per-layer dual-evidence checks; the selected profile therefore freezes all lamella pixels and applies non-local means only to the central solid region. It reduces central high-frequency noise by `9.77%` while retaining zero lamella/interlayer width error, zero endpoint P95 error, and `0.99963` SSIM against v15. See the [English v16 report](MEASUREMENT_QUALITY_V16_REPORT_EN.md) and [Chinese v16 report](MEASUREMENT_QUALITY_V16_REPORT.md).
-
-The experimental **v17 structure-carrier-conditioned diffusion** path makes the structural carrier an explicit generator condition rather than a post-hoc reference. A compact bounded-residual DDIM receives carrier intensity, low-frequency appearance, x/y gradients, curved centerlines, finite-width boundaries, endpoints, interlayers, confidence, and uncertainty. Its training objective includes diffusion, carrier, edge, width, endpoint, interlayer, boundary-field, and midscale-detail terms. On the supplied image the accepted generated residual strength is `0.85`; relative to v16, lamella axial noise decreases `1.05%`, central high-frequency noise decreases `2.67%`, and flat-region noise decreases `1.51%`, with `0.34%` lamella-width P95 error, `0.00043 px` endpoint P95 error, and `0.999968` SSIM. Because generated pixels are present, the output is explicitly a `MEASUREMENT_CANDIDATE`, not a calibrated replacement for v16. See the [English v17 report](STRUCTURE_CONDITIONED_DIFFUSION_V17_REPORT_EN.md) and [Chinese v17 report](STRUCTURE_CONDITIONED_DIFFUSION_V17_REPORT.md).
-
-The experimental **v18 constrained-detail fusion** combines v11's finite-width localization and closed-loop per-structure acceptance with v17's generated denoising. It applies only zero-phase symmetric cleanup to existing v17 pixels, exports row-wise carrier width trajectories, and restores every regressing lamella and adjacent gap to the exact v17 baseline. On the supplied image, 74 lamellae retain enhancement and 26 marginal lamellae are rolled back. Interlayer high-frequency noise decreases another `0.472%`; lamella-width P95 error remains `0.3407%`, endpoint P95 error is `0.00459 px`, and axial-detail correlation is `0.999986`. No analytic ribbon pixels, resize, registration, or warp are used. See the [English v18 report](CONSTRAINED_DETAIL_FUSION_V18_REPORT_EN.md) and [Chinese v18 report](CONSTRAINED_DETAIL_FUSION_V18_REPORT.md).
-
-The experimental **v19 measurement-invariant zoned restoration** retains the complete v17 generative and v18 constrained-detail chain, then separates residual cleanup into four independently gated regions: the lamella/interlayer stacks, central solid, endpoint-exterior fog, and low-structure background. Stack filtering is axial only, endpoint-envelope pixels are restored exactly, every third longitudinal row is checked for transverse-width drift, and unsafe lamella/gap neighborhoods are selectively rolled back to v18. Candidate selection and the final write/read round trip are audited on the exact uint16 pixels. See the [English v19 report](MEASUREMENT_INVARIANT_ZONED_RESTORATION_V19_REPORT_EN.md), [Chinese v19 report](MEASUREMENT_INVARIANT_ZONED_RESTORATION_V19_REPORT.md), and the run-generated `structure_anchored_multiregion_v19_metrics.json` for the selected parameters and measured results. Generated v17 pixels remain present, so v19 is still a `MEASUREMENT_CANDIDATE`; the non-generated v16 carrier and exported numeric constraints remain authoritative until calibrated validation.
-
-On the supplied 2200×1600 image, the selected `(stack, central, fog, flat)` strengths are `(0.02, 0.50, 0.60, 0.50)`. Relative to v18, the fixed high-frequency residual proxy decreases by `9.51%` in the central solid, `14.26%` in endpoint-exterior fog, and `11.99%` in low-structure background. Nine of 100 marginal lamellae are restored exactly. The quantized output retains `0.3150%` lamella-width P95 error, `0.2096%` interlayer-width P95 error, `0.004734 px` endpoint P95 deviation, and `0.003053 px` row-width-drift P95; every post-write release gate passes. These are single-image internal audit values, not calibrated physical-accuracy claims.
-
-The experimental **v20 measurement-safe TV post-process** runs no new generator and performs no sharpening, contrast remapping, registration, resize, resampling, warp, or analytic redraw. It searches seven low-strength Chambolle-TV residual profiles inside eroded, softly gated central, endpoint-exterior-fog, and flat-background writable zones. The selected `tv_balanced_strong_post` profile uses `(estimator, blend)=(tv12,0.40)` for the central zone, `(tv12,0.55)` for fog, and `(tv12,0.50)` for flat background, while stack strength stays zero. Relative to v19, fixed writable-support high-frequency RMS falls by `1.689%`, `0.631%`, and `5.180%`; a complementary fixed-support Haar-detail mean-absolute proxy falls by `2.473%`, `0.688%`, and `7.166%`. The complete lamella/interlayer stacks remain bit-exact, direct geometry comparison over 100 lamella and 98 interlayer rows has a maximum difference of `0 px`, every-row transverse-width drift is `0 px`, changes outside writable support are zero, and SSIM against v19 is `0.99999435`. These are complementary no-reference high-frequency proxies on one image, not independent proof or error against noise-free ground truth. Retained v17 pixels keep the output at `MEASUREMENT_CANDIDATE` status.
-
-The organized code, documentation, runtime-data boundaries, and release archives are indexed in [`PROJECT_STRUCTURE.md`](PROJECT_STRUCTURE.md).
-
-Versions v12 and v13 remain available as research profiles; they do not alter the frozen v11 profile or archived v11 result. v15 reuses a tuned v13 projection only for its explicitly named `VISUAL_ONLY` companion. See the [v12 English](GENERATIVE_RAW_DUAL_EVIDENCE_V12_REPORT_EN.md), [v12 Chinese](GENERATIVE_RAW_DUAL_EVIDENCE_V12_REPORT.md), [v13 English](GENERATIVE_BLIND_GUIDE_DETAIL_V13_REPORT_EN.md), and [v13 Chinese](GENERATIVE_BLIND_GUIDE_DETAIL_V13_REPORT.md) reports. Generative pixels are never used in the v15 measurement output.
-
-For the preserved v11 result, guide-first measurement finds 49 left and 51 right lamellae plus 98 interlayers. All 100 constraints pass; endpoint-shift P95 is `0.0856 px`, length-change P95 is `0.1006 px`, and FWHM-error median/P95 are `0.0182%`/`0.2010%` after resizing the generator output before post-processing.
-
-## Recommended v15 Dual-Output Workflow for Measurement
-
-The central design change is that visual quality and measurement fidelity are no longer forced into the same pixels:
+## Processing contract
 
 ```text
-source-sized generation -> deterministic post-processing -> VISUAL_ONLY companion
-blind-denoised guide -------------------------------------> MEASUREMENT structure carrier
+raw 16-bit CT ───────────────┐
+                            ├─ blind-denoised guide ─ measure native geometry ─┐
+external generated image ─ source-size lock ───────────────────────────────────┤
+                                                                                └─ bounded 2-D structure guidance
+                                                                                   ├─ final PNG
+                                                                                   ├─ final 16-bit TIFF
+                                                                                   └─ metrics + audit images
 ```
 
-Run the full pipeline with:
+Key invariants:
 
-```bash
-docker compose run --rm ct-v15-dual
+- Output width and height equal the raw source exactly; there is no crop or padding.
+- Size correction happens before structure guidance or any later processing.
+- The central block and pixels outside the two lamella masks are bit-identical to
+  the source-sized generated candidate.
+- The accepted candidate supplies all displayed intensity values. Raw/guide
+  intensities are never copied into the final image.
+- The selected warp is searched over conservative strengths and must pass SSIM,
+  writable-mask, ridge-median, and ridge-P95 guardrails.
+- The bundled reference run selected strength `0.16`, corresponding to about
+  `0.8 px` maximum applied displacement in either axis.
+
+> The output is a measurement-assist image, not calibrated ground truth. Keep the
+> raw CT, blind guide, geometry profile, and manifests with each result.
+
+## Required inputs
+
+Place files in `input/`:
+
+```text
+input/
+├── source_16bit.tif                 # native CT, single-channel integer image
+├── generative_candidate.png         # external generator result; any size
+└── measurement_guide_16bit.tif      # optional, native-size blind-denoised guide
 ```
 
-or directly:
+The repository deliberately does not embed a remote image-generation API,
+credentials, or proprietary weights. Any generator can be used if it follows
+[the generator contract](docs/GENERATOR_INTERFACE.md). When `--guide` is omitted,
+the included self-supervised blind model trains on the current CT image and
+creates the guide automatically.
+
+## Quick start with Docker
+
+Fast reproducible path using a precomputed guide:
 
 ```bash
-python app/run_v15_pipeline.py \
+docker compose build enhance
+docker compose run --rm enhance
+```
+
+Full path that trains the blind guide for this image (slower on CPU):
+
+```bash
+docker compose --profile train-guide run --rm enhance-auto-guide
+```
+
+Results are written to `output/`. To use CUDA, build `Dockerfile.cuda` and pass
+`--blind-device cuda` to `app/run_pipeline.py`.
+
+## Run with Python
+
+Python 3.11 is recommended.
+
+```bash
+python -m pip install -r requirements-cpu.txt
+
+python app/run_pipeline.py \
   --source input/source_16bit.tif \
+  --generated input/generative_candidate.png \
   --guide input/measurement_guide_16bit.tif \
-  --generated input/generative_candidate_visual_only.png \
-  --outdir results_generative_shape_v15_dual_output
+  --outdir output
 ```
 
-The two final products are:
-
-- `FINAL_VISUAL_ONLY_enhanced_2200x1600_16bit.tif`: stronger denoising and display clarity; generated pixels remain and the file must not be measured.
-- `FINAL_MEASUREMENT_structure_preserved_2200x1600_16bit.tif`: full 2200×1600 blind-guide structural carrier; generator weight is zero and no warp, resize, intensity remapping, or analytic lamella replacement occurs after the guide is formed.
-
-On the supplied image, the measurement branch retained 100 lamellae and 98 interlayers. Lamella-width median/P95 error against the guide was `0% / 0%`, endpoint P95 error was `0 px`, interlayer-width P95 error was `0%`, and interlayer-length P95 error was `0.080 px`. Low-, mid-frequency, gradient, and per-lamella axial-detail correlations were effectively `1.0`. The visual companion retained a `17.6%` edge-clarity gain over the raw image, while its generated pixels remain explicitly excluded from metrology.
-
-To apply the optional v16 quality refinement after v15:
+Omit `--guide` to train the blind-denoised guide:
 
 ```bash
-docker compose run --rm ct-v16-measurement-quality
-```
-
-or:
-
-```bash
-python app/measurement_quality_optimize.py \
+python app/run_pipeline.py \
   --source input/source_16bit.tif \
-  --input results_generative_shape_v15_dual_output/FINAL_MEASUREMENT_structure_preserved_2200x1600_16bit.tif \
-  --outdir results_generative_shape_v16_measurement_quality
+  --generated input/generative_candidate.png \
+  --outdir output \
+  --blind-iterations 600 \
+  --blind-device auto
 ```
 
-The v15 image remains the immutable audit baseline. v16 is accepted only when its endpoint, length, lamella-width, interlayer-width/length, raw-nonregression, multiscale-detail, edge-retention, and SSIM checks all pass.
+Use `--overwrite` only when intentionally replacing outputs previously managed
+by this pipeline. Unrelated files in the output directory are preserved.
 
-## Experimental v17 Structure-Conditioned Generator
+## Adapting to similar images
 
-After preparing the v16 carrier and the blind uncertainty map, run:
+The default coordinates target the same acquisition layout as the accepted
+sample and scale automatically from the `2200 × 1600` reference canvas. For a
+different framing, copy and edit
+[`config/reference_geometry.json`](config/reference_geometry.json), then pass:
 
 ```bash
-docker compose run --rm ct-v17-structure-diffusion
+--geometry-config config/my_geometry.json
 ```
 
-or:
+The left/right body ROIs should contain the straight, measurable lamella bodies;
+the top/bottom ranges should cover endpoints; and `central_lock_roi` must cover
+the complete center block. See [method details](docs/METHOD.md).
 
-```bash
-python app/structure_conditioned_diffusion.py \
-  --source input/source_16bit.tif \
-  --carrier results_generative_shape_v16_measurement_quality/FINAL_MEASUREMENT_v16_quality_enhanced_2200x1600_16bit.tif \
-  --proposal input/generative_candidate_visual_only.png \
-  --uncertainty results_sota/01_sota_blind/MEASUREMENT_sota_uncertainty_float32.tif \
-  --outdir results_generative_shape_v17_structure_conditioned_diffusion
-```
-
-The canonical output is `MEASUREMENT_CANDIDATE_v17_structure_conditioned_16bit.tif`. The generator predicts only a bounded residual around the carrier. Every residual strength is independently remeasured over all lamellae and interlayers, and the zero-strength v16 carrier is the mandatory fallback.
-
-## Experimental v18 Clean-Boundary / Detail-Preserving Fusion
-
-After producing v17, run:
-
-```bash
-docker compose run --rm ct-v18-constrained-detail-fusion
-```
-
-or:
-
-```bash
-python app/constrained_detail_fusion.py \
-  --source input/source_16bit.tif \
-  --carrier results_generative_shape_v16_measurement_quality/FINAL_MEASUREMENT_v16_quality_enhanced_2200x1600_16bit.tif \
-  --generated results_generative_shape_v17_structure_conditioned_diffusion/MEASUREMENT_CANDIDATE_v17_structure_conditioned_16bit.tif \
-  --outdir results_generative_shape_v18_clean_edges_detail_preserved
-```
-
-The canonical output is `MEASUREMENT_CANDIDATE_v18_clean_edges_detail_preserved_16bit.tif`. V11-style geometry fields localize the operation but contribute no analytic intensity pixels. Every modified structure is independently audited, and unsafe layers are locally restored to v17 before release.
-
-## Experimental v19 Measurement-Invariant Zoned Restoration
-
-After producing v16 and v18, run:
-
-```bash
-docker compose run --rm ct-v19-measurement-invariant-zoned
-```
-
-or directly:
-
-```bash
-python app/structure_anchored_multiregion_denoise.py \
-  --source input/source_16bit.tif \
-  --carrier results_generative_shape_v16_measurement_quality/FINAL_MEASUREMENT_v16_quality_enhanced_2200x1600_16bit.tif \
-  --input results_generative_shape_v18_clean_edges_detail_preserved/MEASUREMENT_CANDIDATE_v18_clean_edges_detail_preserved_16bit.tif \
-  --outdir results_generative_shape_v19_structure_anchored_multiregion
-```
-
-The canonical image is `MEASUREMENT_CANDIDATE_v19_structure_anchored_multiregion_16bit.tif`. The stage never resizes, registers, warps, or analytically redraws a lamella. It searches independent strengths for axial stack cleanup and three non-stack regions, restores protected endpoint-envelope pixels bit exactly, rejects excessive selective rollback, and validates topology, endpoint/length drift, aggregate and row-wise FWHM, edge/detail retention, regional noise, and SSIM. The final TIFF is reloaded and audited again before the run is declared complete.
-
-The same output directory contains the display preview and comparison, a zoned-mask audit, per-lamella and per-interlayer CSV files, row-wise width measurements, structure-detail statistics, and `structure_anchored_multiregion_v19_metrics.json`. Use the JSON as the source of truth for the selected candidate and all release checks; do not infer metrology validity from the preview alone.
-
-## Experimental v20 Measurement-Safe TV Post-Process
-
-After producing v16 and v19, run:
-
-```bash
-docker compose run --rm ct-v20-measurement-safe-postprocess
-```
-
-or directly:
-
-```bash
-python app/measurement_safe_postprocess.py \
-  --source input/source_16bit.tif \
-  --carrier results_generative_shape_v16_measurement_quality/FINAL_MEASUREMENT_v16_quality_enhanced_2200x1600_16bit.tif \
-  --input results_generative_shape_v19_structure_anchored_multiregion/MEASUREMENT_CANDIDATE_v19_structure_anchored_multiregion_16bit.tif \
-  --outdir results_generative_shape_v20_measurement_safe_postprocess
-```
-
-The canonical image is `MEASUREMENT_CANDIDATE_v20_measurement_safe_postprocessed_16bit.tif`. V20 computes softly gated, amplitude-capped TV residuals only in non-measurement zones. Each binary writable mask receives explicit one-pixel exterior zero padding before an 8 px distance-transform smoothstep ramp is applied; weights are exactly zero outside the support and on its first inside contour. It hard-copies the complete lamella/interlayer stacks, measurement-operator samples, configured central ROI border/ring, strong edges, and all endpoint-envelope anchors from the same-coordinate v19 uint16 image. Candidate selection checks topology, every-row FWHM, direct per-structure geometry equality, the fixed-line configured-ROI tracker, local SSIM and gradient retention, two complementary fixed-support high-frequency proxies, allowed-write containment, seam deltas, clipping, global SSIM, every lock set, and the unchanged canvas outside the target ROI. The selected result changes 88,375 pixels only inside writable support; changed pixels have absolute-delta P99/maximum values of 66/118 DN, while the zero-weight contour remains exact and the inner seam has 1/7 DN P95/maximum. The written TIFF is reloaded and audited a second time. The full repository suite contains 59 passing tests, including 12 v20-specific tests.
-
-The output directory also contains `MEASUREMENT_CANDIDATE_v20_measurement_safe_postprocessed.png`, `MEASUREMENT_CANDIDATE_v20_comparison.png`, `AUDIT_v20_measurement_safe_masks.png`, four per-structure CSV files, and `measurement_safe_postprocess_v20_metrics.json`. The JSON is the source of truth for the selected candidate, writable/locked regions, no-reference residual proxies, and post-write release result.
-
-## Preserved v11 Guide-First Generative Workflow (Selected)
-
-The active order is deliberately registration-free:
+## Outputs
 
 ```text
-generation -> source-size resize -> visual post-processing
-           -> hard geometry projection
+output/
+├── 01_source_sized_generation/
+├── 02_blind_guide/
+├── 03_structure_guidance/
+│   ├── AUDIT_measured_structure_overlay.png
+│   ├── AUDIT_native_warp_write_mask.png
+│   ├── STRUCTURE_WARP_GUIDED_comparison.png
+│   └── native_structure_warp_metrics.json
+├── FINAL_enhanced_<width>x<height>.png
+├── FINAL_enhanced_<width>x<height>_16bit.tif
+└── RUN_MANIFEST.json
 ```
 
-For the container entry point, place the source, blind-denoised measurement
-guide, and generated candidate under the following names, then run:
+`RUN_MANIFEST.json` records inputs, hashes, dimensions, stage order, selected
+candidate, geometry metrics, and invariants.
+
+## Tests
 
 ```bash
-docker compose run --rm ct-v11-generative
+python -m unittest discover -s tests -v
 ```
 
-```text
-input/source_16bit.tif
-input/measurement_guide_16bit.tif
-input/generative_candidate_visual_only.png
-```
-
-The resulting `v11_release_manifest.json` explicitly records
-`registration.enabled=false` and `transform_applied=false`.
-
-```bash
-python app/generative_shape_constraint.py \
-  --source input/source_16bit.tif \
-  --guide results_sota/01_sota_blind/MEASUREMENT_sota_geometry_blind_16bit.tif \
-  --outdir results_generative_shape_v11/00_guide_constraints
-
-# Supply the raw source, generated condition map, and appearance reference to
-# a generative editor; then run the existing visual post-processing function.
-
-python app/generative_postprocess.py \
-  --generated results_generative_shape_v11/01_generated/GENERATIVE_denoised_guide_shape_conditioned_raw.png \
-  --outdir results_generative_shape_v11/02_postprocessed \
-  --match-source input/source_16bit.tif \
-  --resize-before-postprocess
-
-python app/generative_shape_project.py \
-  --profile v11 \
-  --source input/source_16bit.tif \
-  --guide results_sota/01_sota_blind/MEASUREMENT_sota_geometry_blind_16bit.tif \
-  --generated results_generative_shape_v11/02_postprocessed/GENERATIVE_visual_only_postprocessed.png \
-  --outdir results_generative_shape_v11/03_hard_shape_projection
-```
-
-For the saved experiment, guide-first measurement found 49 left and 51 right lamellae and 98 interlayers. All 100 constraints passed, raw/guide endpoint disagreement P95 was `0.184 px`, final endpoint-shift P95 was `0.0856 px`, median FWHM error was `0.0182%`, and FWHM-error P95 was `0.2010%`.
-
-For a single command that recreates the constraints, archives the supplied soft candidate, runs post-processing, and performs the frozen projection, use `app/run_v11_pipeline.py` as documented in [`V11_STABLE_RELEASE.md`](V11_STABLE_RELEASE.md).
-
-The runner resizes the native generated candidate to the source dimensions **before** deterministic post-processing. Consequently, the source-sized generated candidate, all post-processing operations, the projection input, final PNG, and final 16-bit TIFF use the same `2200×1600` coordinate grid. The provider-native `1470×1070` file remains archived for provenance only. The order and dimensions are recorded in `generation_preprocess_size_manifest.json`, `size_lock_manifest.json`, and the projection audit.
-
-## Rejected v14 Registration Research (Inactive)
-
-> **Status:** This path is retained only as an audit/research record. Visual
-> evaluation found the registered result too soft, so it is not part of the
-> selected workflow and no default container service invokes it.
-
-The optional v14 path addresses generator-induced disagreement at the extreme
-left and right component boundaries. It preserves v11 and inserts registration
-after the native generator output is resized to the source canvas, but before
-visual post-processing and hard geometry projection:
-
-```text
-generation -> source-size resize -> constrained registration
-           -> visual post-processing -> hard geometry projection
-```
-
-The registration stage uses gradient phase correlation inside the component
-ROI for a coarse translation prior. It then detects the left outer, left inner,
-right inner, and right outer guide envelopes plus the common top/bottom
-envelope and fits a monotone piecewise-affine map. Scale and translation
-guardrails reject unsafe solutions. Only the generated visual candidate is
-warped; the raw/guide constraints remain in original source coordinates and
-are reapplied by the existing hard projector.
-
-```bash
-python app/run_v14_pipeline.py \
-  --source input/source_16bit.tif \
-  --guide results_sota/01_sota_blind/MEASUREMENT_sota_geometry_blind_16bit.tif \
-  --generated results_generative_shape_v11/01_generated/GENERATIVE_denoised_guide_shape_conditioned_raw.png \
-  --outdir results_generative_shape_v14_registration
-```
-
-To reproduce the rejected experiment explicitly, opt into its Compose profile:
-
-```bash
-docker compose --profile registration-experimental run --rm ct-v14-registration
-```
-
-```text
-input/source_16bit.tif
-input/measurement_guide_16bit.tif
-input/generative_candidate_visual_only.png
-```
-
-The current validation image reduced six-landmark envelope P95 error from
-`62.41 px` before registration to `0.65 px` immediately afterward. The final
-hard-projected image retained horizontal-envelope P95 error below `1 px`, while
-all 100 lamella constraints passed.
-
-Seven registration variants are now evaluated at exactly the same pre-
-postprocessing position with `app/registration_benchmark.py`: phase-only
-translation, global affine, PCHIP envelope, piecewise linear, piecewise cubic,
-piecewise quintic, and piecewise edge-preserving registration. Phase-only and
-global affine registration are rejected because their envelope P95 errors are
-`27.67 px` and `5.72 px`. The selected edge-preserving piecewise method has a
-registration P95 error of `0.84 px` and the strongest weak-side outer-edge
-gradient among passing candidates. Its final horizontal-envelope P95 is
-`0.874 px`; all 100 lamella constraints remain matched.
-
-The comparison also shows that the apparent softness in the final image is not
-introduced primarily by registration: the selected registered image has
-higher component and outer-edge gradients than the unregistered candidate.
-Most later smoothing comes from the existing hard-projection background and
-periodicity-suppression stage, which deliberately replaces generator texture.
-
-See [`REGISTRATION_CONSTRAINED_V14_REPORT.md`](REGISTRATION_CONSTRAINED_V14_REPORT.md)
-for the method, guardrails, outputs, and interpretation.
-
-## Optional v13 Research Comparison
-
-Generate the soft candidate with four strictly separated inputs: raw target, source-coordinate blind-denoised detail guide, v11 constraint map, and unregistered appearance reference. Then run:
-
-```bash
-python app/generative_postprocess.py \
-  --generated results_generative_shape_v13/01_generated/GENERATIVE_v13_blind_guide_detail_conditioned_raw.png \
-  --outdir results_generative_shape_v13/02_postprocessed
-
-python app/generative_shape_project.py \
-  --profile v13 \
-  --source input/source_16bit.tif \
-  --guide results_sota/01_sota_blind/MEASUREMENT_sota_geometry_blind_16bit.tif \
-  --generated results_generative_shape_v13/02_postprocessed/GENERATIVE_visual_only_postprocessed.png \
-  --outdir results_generative_shape_v13/03_detail_consistent_projection \
-  --detail-guide-weight 0.55
-```
-
-The v13 projector uses guide structure for low/mid-frequency foreground detail and bounded per-lamella axial modulation. It is an optional comparison and does not alter the default v11 profile.
-
-The preceding v4 boundary-accuracy update remains documented in the [English boundary-preservation report](BOUNDARY_PRESERVATION_REPORT_EN.md) and [Chinese boundary-preservation report](BOUNDARY_PRESERVATION_REPORT.md).
-
-## Bilingual Technical Innovation Reports
-
-- [English Markdown report](reports/technical_innovation/TECHNICAL_INNOVATION_REPORT_EN.md)
-- [English self-contained HTML report](reports/technical_innovation/TECHNICAL_INNOVATION_REPORT_EN.html)
-- [Chinese Markdown report](reports/technical_innovation/TECHNICAL_INNOVATION_REPORT.md)
-- [Chinese self-contained HTML report](reports/technical_innovation/TECHNICAL_INNOVATION_REPORT.html)
-
-The report directory also contains reproducible Chinese and English `artifact*.json` files, SQLite snapshots, source SQL, validation receipts, and three numeric-only experiment manifests.
-
-> **Data safety:** this repository contains code, container configuration, technical documentation, and numeric validation evidence only. Raw TIFF files, reference images, generated/enhanced images, model weights, and runtime result directories are excluded by `.gitignore`. Provide image data locally or through read-only mounts.
-
-## Measurement-Safety Architecture
-
-The project preserves two deliberately separated output domains:
-
-1. A generative candidate is converted to a clipped, low-frequency training prior only in raw low-gradient regions. It supplies no layer coordinates and none of its pixels are copied into a measurement output.
-2. `MEASUREMENT_*` contains outputs derived from the original 16-bit image through 16-phase blind prediction, Poisson-Gaussian data projection, raw-coordinate geometry anchoring, a raw-x/y-gradient and endpoint-locked axial filter, bounded residual selection, and explicit width/endpoint/length guardrails. Residual and uncertainty maps are emitted for audit.
-
-No generated pixel is written into a `MEASUREMENT_*` image. The reference JPEG is not a registered pixel-level target.
-
-The blind formulation is a clean-room CT adaptation inspired by [Blind2Sound (ICCV 2025)](https://openaccess.thecvf.com/content/ICCV2025/html/Liu_Blind2Sound_Self-Supervised_Image_Denoising_without_Residual_Noise_ICCV_2025_paper.html), selected as a recent peer-reviewed, reproducible best fit for single-channel blind denoising. It is not the authors' official implementation and is not claimed to be universally strongest on every modality.
-
-## Recommended v8 Workflow
-
-Place `source_16bit.tif` and `generative_candidate_visual_only.png` in `input/`, then run the complete five-stage chain:
-
-```bash
-docker compose run --rm ct-sota
-```
-
-Equivalent native command:
-
-```bash
-python app/run_sota_pipeline.py \
-  --source input/source_16bit.tif \
-  --generative-prior input/generative_candidate_visual_only.png \
-  --outdir results_sota --iterations 600 --device cpu
-```
-
-An optional unregistered appearance reference can be recorded with `--reference-style input/reference_style.jpg`. It is never used for registration, geometry, or output pixels.
-
-The recommended result is `results_sota/04_residual_denoise/QUALITY_v7_residual_denoised_16bit.tif` (the residual module retains its compatible v7 filename). In a v8 run, the file receives the newly geometry-locked axial result. Check `directional_projection_selection` in `01_sota_blind/sota_run_manifest.json`, then the quality, cleanup, residual, and fixed-guide length audit manifests before measurement use.
-
-## Legacy v4 Workflow
-
-Run the single-image blind denoiser first, followed by constrained directional edge and local-contrast enhancement:
-
-```bash
-docker compose run --rm ct-restore-cpu
-docker compose run --rm ct-quality
-```
-
-`ct-quality` first runs the original edge/structure post-processing and selects its parameters with the original appearance guardrails. Only afterward, a geometry stage applies a conservative local sub-pixel displacement to the already enhanced pixels. A final weak, edge-gated cleanup suppresses residual fine grain and mid-scale fog in low-structure regions. The raw image supplies endpoint coordinates but no raw pixels are copied back. Final guardrails cover transverse FWHM, per-lamella endpoints, length drift, edge/contrast retention, and SSIM against the geometry-only stage.
-
-The recommended result is:
-
-```text
-results_quality/QUALITY_boundary_preserved_16bit.tif
-```
-
-It retains the original 2200 × 1600 dimensions and 16-bit grayscale representation and contains no generative pixels.
-
-## v8 Output Reference
-
-- `results_sota/01_sota_blind/MEASUREMENT_sota_geometry_blind_16bit.tif` — blind posterior plus selected geometry-locked axial denoising, before the original enhancement chain.
-- `results_sota/01_sota_blind/AUDIT_blind_prediction_16bit.tif` — unprojected 16-phase blind prediction for audit only.
-- `results_sota/01_sota_blind/AUDIT_safe_generative_prior_16bit.tif` — clipped low-frequency prior for audit only.
-- `results_sota/01_sota_blind/MEASUREMENT_sota_uncertainty_float32.tif` — learned predictive uncertainty.
-- `results_sota/02_geometry_quality/QUALITY_boundary_preserved_16bit.tif` — complete v5 enhancement result and input to v6 cleanup.
-- `results_sota/02_geometry_quality/QUALITY_boundary_overlay.png` — raw/enhanced endpoint overlay.
-- `results_sota/03_boundary_cleanup/QUALITY_boundary_clean_16bit.tif` — recommended full-resolution 16-bit v6 result.
-- `results_sota/03_boundary_cleanup/QUALITY_boundary_cleanup_comparison.png` — v5/v6/delta comparison.
-- `results_sota/03_boundary_cleanup/AUDIT_boundary_cleanup_masks.png` — raw-coordinate boundary/exterior support audit.
-- `results_sota/03_boundary_cleanup/boundary_cleanup_metrics.json` — parameter search and cleanup/geometry guardrails.
-- `results_sota/04_residual_denoise/QUALITY_v7_residual_denoised_16bit.tif` — recommended full-resolution 16-bit v8 pipeline result; filename retained for residual-stage compatibility.
-- `results_sota/04_residual_denoise/QUALITY_v7_comparison.png` — pre/post residual-denoising and absolute-delta comparison.
-- `results_sota/04_residual_denoise/AUDIT_v7_residual_denoise_masks.png` — lamella, central-highlight, and endpoint-protection audit.
-- `results_sota/04_residual_denoise/residual_denoise_metrics.json` — v7 search and geometry/appearance guardrails.
-- `results_sota/05_length_audit/layer_lengths.csv` — independent fixed-guide per-lamella audit.
-
-## Legacy Output Reference
-
-### Blind-Denoising Outputs
-
-- `results/MEASUREMENT_blind_denoised_16bit.tif` — the only denoised candidate eligible for subsequent calibration and measurement validation.
-- `results/MEASUREMENT_residual_float32.tif` — processed result minus the raw observation; inspect it for removed structure.
-- `results/MEASUREMENT_uncertainty_float32.tif` — standard deviation across masked predictions; high-value regions require review.
-- `results/run_manifest.json` — method, parameters, lamella count, FWHM, displacement, SSIM, and guardrail results.
-- `results/GENERATIVE_visual_only_postprocessed*.{png,tif}` — visual-only generative results; never use them for measurement.
-- `results/comparison.png` — raw, measurement-safe denoised, and generative visual candidates side by side.
-
-### Quality-Optimization Outputs
-
-- `results_quality/QUALITY_boundary_preserved_16bit.tif` — preferred full-resolution result after boundary correction and guarded residual-fog cleanup.
-- `results_quality/QUALITY_original_enhancement_16bit.tif` — unchanged output of the original enhancement and post-processing chain, saved for audit.
-- `results_quality/QUALITY_geometry_only_16bit.tif` — enhanced result after geometry correction but before residual-fog cleanup.
-- `results_quality/QUALITY_balanced_16bit.tif` — backward-compatible alias containing the same selected pixels.
-- `results_quality/QUALITY_balanced_preview.png` — 8-bit preview of the preferred result.
-- `results_quality/QUALITY_display_only.png` — local-contrast display mapping; quantitative intensities are not preserved.
-- `results_quality/QUALITY_comparison.png` — enlarged comparison of the raw image, blind-denoised baseline, unchanged original enhancement, and final v4 result.
-- `results_quality/QUALITY_fog_cleanup_closeup.png` — fixed-window geometry-stage/final close-up plus an auto-scaled absolute-change audit.
-- `results_quality/QUALITY_boundary_overlay.png` — green raw and red enhanced endpoint detections; orange marks uncertain raw references requiring review.
-- `results_quality/boundary_geometry.csv` — per-lamella raw/enhanced endpoints, length deltas, uncertainty, and reference-quality flag.
-- `results_quality/quality_metrics.json` — parameter search, quality gains, and structural guardrails.
-
-## Docker CPU: macOS or Hosts Without NVIDIA GPUs
-
-```bash
-docker compose run --rm ct-restore-cpu
-```
-
-Equivalent manual commands:
-
-```bash
-docker build -f Dockerfile.cpu -t ct-generative-blind-restore:cpu .
-docker run --rm \
-  -v "$PWD/input:/data/input:ro" \
-  -v "$PWD/results:/data/results" \
-  ct-generative-blind-restore:cpu \
-  --input /data/input/source_16bit.tif \
-  --outdir /data/results --device cpu
-```
-
-## Docker CUDA: NVIDIA Hosts
-
-NVIDIA Container Toolkit is required:
-
-```bash
-docker compose --profile cuda run --rm ct-restore-cuda
-```
-
-The default run performs 600 single-image training iterations. For a quick smoke test, append `--iterations 120 --passes 4`. Production review should use at least 600 iterations and inspect `guardrail_pass`, the residual image, and the uncertainty map.
-
-## Optional Length Optimization and Per-Lamella Measurement
-
-The length module is retained as an independent audit. Run it after `ct-quality`; its default `--sharpen-amount 0` mode does not change any pixels:
-
-```bash
-docker compose run --rm ct-length
-```
-
-The module tracks the curved center path of each lamella row by row and fits subpixel endpoints on both the raw and final enhanced images. Optional bounded zero-phase sharpening is available only when explicitly requested. Its outputs are written to `results_length/`:
-
-- `MEASUREMENT_length_optimized_16bit.tif` — visual candidate for length inspection.
-- `layer_lengths.csv` — recommended pixel length, endpoints, internal uncertainty, and quality flag for each lamella.
-- `layer_length_overlay_roi.png` — green indicates pass; red indicates manual review.
-- `length_qa.json` — aggregate accuracy and data-quality checks.
-
-If a reference standard provides a calibrated pixel size—for example, `0.012 mm` per pixel—run:
-
-```bash
-docker compose run --rm ct-length \
-  --source /data/input/source_16bit.tif \
-  --denoised /data/results_quality/QUALITY_boundary_preserved_16bit.tif \
-  --outdir /data/results_length \
-  --sharpen-amount 0 --pixel-size 0.012 --unit mm
-```
-
-Do not infer physical pixel size from the displayed TIFF dimensions. The current source file contains no XResolution, YResolution, or ResolutionUnit metadata.
-
-## Why FoundIR-v2 Is Not Used as the Measurement Image
-
-FoundIR-v2 relies on large-model components such as SDXL and LLaVA, and its official inference workflow targets one or two CUDA GPUs. It is a general image-restoration model rather than a system calibrated for this industrial CT modality, 16-bit intensity domain, or scanner PSF.
-
-It may produce exceptionally clear-looking lamellae, but visual clarity is not measurement truth. Adding, deleting, duplicating, or moving even one layer invalidates thickness conclusions. The project therefore accepts an arbitrary generative result through `--generated` for visual-only post-processing, but never mixes it into a `MEASUREMENT_*` output.
-
-## Validation Environment and Limits
-
-The v8 chain and fourteen unit tests were validated with a local PyTorch CPU environment using the dependency versions pinned for the container. The supplied Compose service reproduces the same five stages on a Docker-capable CPU host. A ten-iteration end-to-end Docker smoke run also completed with all blind, directional, width, endpoint, cleanup, residual-denoising, and independent-length guardrails passing.
-
-The saved experiment is a single-image internal validation, not a cross-device benchmark or metrology certification. Absolute millimetre or micrometre accuracy still requires calibrated pixel size, a reference standard, and system PSF/MTF characterization.
+Container validation and golden-sample reproduction are documented in
+[docs/VALIDATION.md](docs/VALIDATION.md). A Chinese guide is available in
+[README_ZH.md](README_ZH.md).
+
+## Method provenance
+
+The blind stage is a clean-room CT adaptation of the Blind2Sound idea with
+Poisson-Gaussian noise estimation, self-supervised re-visible masking, low-frequency
+generative guidance, and geometry guardrails. “SOTA” here describes the selected
+research family and adaptation; it is not a universal benchmark claim. The final
+structure step is project-specific and deterministic.

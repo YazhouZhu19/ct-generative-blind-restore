@@ -6,10 +6,9 @@
 - Platform: Linux/arm64
 - Allocated resources: 8 CPUs, approximately 3.8 GiB RAM
 - Image: `ct-generative-blind-restore:cpu`
-- Final image digest/ID: `sha256:c8a2910b13f950f7c2955c47ef944ea035a3abeadc5ce4e75a0c73188915e929`
-- Final image size: 271,981,539 bytes
+- Latest validated image digest/ID (v21): `sha256:a3b375804794c995a56eec8f2ef3b86298af5818609d39aea06ee38989eaafe8`
 
-The image was built successfully from `Dockerfile.cpu` with the pinned Python packages. A whitelist-style `.dockerignore` prevents raw images, runtime results, model weights, Git metadata, reports, and host Python caches from entering the Docker build context. The final rebuild transferred only the whitelisted context and reused the verified dependency layers.
+The image was built successfully from `Dockerfile.cpu` with the pinned Python packages. A whitelist-style `.dockerignore` prevents raw images, runtime results, model weights, Git metadata, reports, and host Python caches from entering the Docker build context. The latest v21 rebuild transferred only the whitelisted context, embedded the application code in the image, and reused the verified dependency layers.
 
 ## End-to-end smoke command
 
@@ -220,3 +219,69 @@ The seven-member 2200×1600 v20 candidate grid was executed directly from the re
 | Post-write geometry, topology, central-integrity, detail, noise, clipping, and lock audit | pass |
 
 The first two residual rows use immutable masks restricted to pixels v20 is permitted to modify and provide complementary fixed-Gaussian and Haar-detail checks; the third applies v19's broader fixed regional operators. They are no-reference residual proxies, not error against a noise-free target and not evidence of SOTA performance. “Central ROI” refers to the configured rectangle and its fixed-line edge tracker, not a validated physical-object boundary. V20 itself introduces no generated pixels, but the input retains v17 generated residuals, so the release remains a `MEASUREMENT_CANDIDATE` and v16 remains the authoritative fallback.
+
+## v21 Native-Coordinate Structure-Detail Precision Validation
+
+The final v21 CPU image was rebuilt after the exhaustive-row, fail-closed, change-contract, convergence, and atomic-publication guards were added. The canonical run used the application code embedded in the rebuilt image, without an application-code bind mount, and evaluated the single `precision_balanced` candidate on the native `2200×1600` grid. The resulting TIFF is single-channel `uint16`, survived an exact write/read round trip, and passed all 57 emitted release checks.
+
+Runtime images are intentionally excluded from Git. Before invoking Compose, the following three exact files must be placed in the repository-relative, ignored directories mounted by `compose.yaml`:
+
+```text
+input/source_16bit.tif
+results_generative_shape_v16_measurement_quality/
+  FINAL_MEASUREMENT_v16_quality_enhanced_2200x1600_16bit.tif
+results_generative_shape_v20_measurement_safe_postprocess/
+  MEASUREMENT_CANDIDATE_v20_measurement_safe_postprocessed_16bit.tif
+```
+
+The image must then be rebuilt before the canonical single-candidate run; a previously cached v20 image with the same tag is not sufficient:
+
+```bash
+docker compose build ct-v21-structure-detail-precision
+
+docker compose run --rm ct-v21-structure-detail-precision \
+  --source /data/input/source_16bit.tif \
+  --carrier /data/results_v16/FINAL_MEASUREMENT_v16_quality_enhanced_2200x1600_16bit.tif \
+  --input /data/results_v20/MEASUREMENT_CANDIDATE_v20_measurement_safe_postprocessed_16bit.tif \
+  --outdir /data/results_v21 \
+  --candidate-name precision_balanced \
+  --candidate-row-step 1
+```
+
+The immutable input and output identities for this validation are:
+
+| Artifact | SHA-256 |
+|---|---|
+| Raw source | `c851b8b55af28e81ab5feeca57e03038cb9f1dc31e3a00392a97305f77a7eac0` |
+| Non-generated v16 carrier | `46f590a5d6a39e77996b0f51c7a5f2a2b54c89696be212fa562479f8d2b4e157` |
+| v20 input candidate | `4a958a48f4fc22168b11c7b9bf7beeb2c55d2ae97b90b2d5700570da8b54b1e2` |
+| v21 output candidate | `21d8e2b85cc861d60000ce664f6a96bc4c09e5b4a9af8cd3c6d6e36e6c024f17` |
+
+| v21 check | Result |
+|---|---:|
+| Selected search profile | `precision_balanced` (single candidate) |
+| Output dimensions / type | `2200×1600` / `uint16` |
+| Emitted release checks | `57/57` true |
+| Every-row FWHM samples | 41,327 |
+| Every-row FWHM drift P95 / maximum | 0.0033176 / 0.0134691 px |
+| Bilateral-boundary coverage | 49,713 / 49,713 requested rows (`row_step=1`) |
+| Left/right edge-position drift P95 / maximum | 0.0032686 / 0.0199670 px |
+| Center drift P95 / maximum | 0.0021844 / 0.00997894 px |
+| Measurement-footprint repair | `L12–L14`, 10,402 pixels |
+| Complete local-cell rollback | 0 layers |
+| Changed pixels versus v20 | 25,305 |
+| Changed pixels outside allowed mask / target / central highlight | 0 / 0 / 0 |
+| SSIM versus v20 | 0.9999991876 |
+| TIFF uint16 round trip | exact |
+
+The complete repository suite was executed with only `tests/` mounted read-only; imports therefore resolved to the application code embedded in the rebuilt image rather than a host-mounted `app/` directory:
+
+```bash
+docker run --rm --entrypoint python \
+  -v "$PWD/tests:/workspace/tests:ro" \
+  -w /workspace \
+  ct-generative-blind-restore:cpu \
+  -m unittest discover -s tests -v
+```
+
+All `73/73` tests pass, and `docker compose config --quiet` passes. These checks establish internal non-regression relative to v20 only under the implemented operators and thresholds. They do not guarantee physical dimensions, calibrated measurement accuracy, or absence of generated-detail error; v21 remains a `MEASUREMENT_CANDIDATE`, and the non-generated v16 carrier remains the measurement fallback.

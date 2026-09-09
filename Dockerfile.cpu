@@ -8,5 +8,7 @@ WORKDIR /workspace
 COPY requirements-common.txt requirements-cpu.txt ./
 RUN pip install --no-cache-dir -r requirements-cpu.txt
 COPY app ./app
+COPY config ./config
+COPY tests ./tests
 
-ENTRYPOINT ["python", "app/pipeline.py"]
+ENTRYPOINT ["python", "app/run_pipeline.py"]

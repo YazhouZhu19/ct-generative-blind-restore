@@ -1,10 +1,9 @@
 #!/usr/bin/env python3
-"""Independent sub-pixel lamella-length audit and optional refinement.
+"""Sub-pixel ridge-path, endpoint, length, and geometry audit utilities.
 
-The default geometry-only mode does not change input pixels. If optional
-zero-phase sharpening is requested, it operates on enhanced pixels only; raw
-pixels are never written back. Results are reported in pixels unless a
-calibrated pixel size is supplied.
+The accepted workflow uses these measurement functions without raw-pixel
+writeback. Results are expressed in pixels unless a calibrated pixel size is
+provided separately.
 """
 
 from __future__ import annotations
