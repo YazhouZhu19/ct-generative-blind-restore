@@ -113,6 +113,8 @@ Every run records:
 - input/output dimensions and size-lock operation;
 - blind-guide origin;
 - selected candidate and all guardrail metrics;
+- whether the exact identity fallback was used because no nonzero warp improved
+  alignment safely;
 - ridge/endpoint/width summaries;
 - final output hashes;
 - explicit invariants and measurement warning.
@@ -125,6 +127,9 @@ constraint table and validated against calibrated data.
 
 - The external generator can hallucinate structures. The small warp improves
   coordinate agreement but cannot make missing or invented content truthful.
+- Structure guidance is allowed to select an exact no-op when all nonzero
+  candidates fail the alignment guardrails; this is a safety outcome, not a
+  failed run.
 - Default ROIs assume a two-stack/central-block layout.
 - A precomputed guide must have exactly the native source dimensions; it is never
   resized because that would invalidate measurement coordinates.

@@ -367,36 +367,80 @@ def choose_warp(
     maximum_displacement: float,
     maximum_vertical_displacement: float,
 ) -> tuple[np.ndarray, dict, list[dict]]:
+    """Select the best safe warp, including an exact identity fallback.
+
+    The source-sized generation is already an accepted image, so a geometry
+    projection must never be mandatory.  Strength zero is injected ahead of
+    the configured search values and kept bit-identical in memory.  It is
+    always guardrail-eligible and is selected when no nonzero candidate passes
+    the established alignment guardrails.  Otherwise, selection among the
+    nonzero candidates is unchanged, preserving accepted historical outputs.
+    """
     baseline = audit.fast_alignment_metrics(guide, generated, generated, layers, fields)
     baseline_mid = float(baseline["guide_mid_frequency_correlation"] or -1.0)
     baseline_median = float(baseline["ridge_center_absolute_offset_median_px"])
     baseline_p95 = float(baseline["ridge_center_absolute_offset_p95_px"])
     records: list[dict] = []
     candidates: list[tuple[np.ndarray, dict]] = []
-    for strength in strengths:
-        candidate, warp = apply_native_warp(
-            generated,
-            fields,
-            matches,
-            strength=strength,
-            maximum_displacement=maximum_displacement,
-            maximum_vertical_displacement=maximum_vertical_displacement,
-        )
-        candidate = base.to_uint16(candidate).astype(np.float32) / 65535.0
-        metrics = audit.fast_alignment_metrics(guide, candidate, generated, layers, fields)
+    search_strengths = [0.0]
+    search_strengths.extend(
+        float(strength) for strength in strengths if float(strength) != 0.0
+    )
+    for strength in search_strengths:
+        identity_candidate = strength == 0.0
+        if identity_candidate:
+            # Do not route the no-op through interpolation or a quantization
+            # round trip: it is the already accepted source-sized generation.
+            candidate = generated.copy()
+            warp = {
+                "strength": 0.0,
+                "maximum_full_displacement_px": float(maximum_displacement),
+                "applied_x_displacement_median_px": 0.0,
+                "applied_x_displacement_p95_px": 0.0,
+                "applied_x_displacement_max_px": 0.0,
+                "maximum_full_vertical_displacement_px": float(
+                    maximum_vertical_displacement
+                ),
+                "applied_y_displacement_median_px": 0.0,
+                "applied_y_displacement_p95_px": 0.0,
+                "applied_y_displacement_max_px": 0.0,
+                "guide_or_raw_pixel_writeback": False,
+                "vertical_coordinate_changed": False,
+                "endpoint_mapping_enabled": False,
+                "canvas_resized": False,
+                "identity_no_op": True,
+            }
+            metrics = dict(baseline)
+        else:
+            candidate, warp = apply_native_warp(
+                generated,
+                fields,
+                matches,
+                strength=strength,
+                maximum_displacement=maximum_displacement,
+                maximum_vertical_displacement=maximum_vertical_displacement,
+            )
+            candidate = base.to_uint16(candidate).astype(np.float32) / 65535.0
+            metrics = audit.fast_alignment_metrics(
+                guide, candidate, generated, layers, fields
+            )
         mid = float(metrics["guide_mid_frequency_correlation"] or -1.0)
         ridge_median = float(metrics["ridge_center_absolute_offset_median_px"])
         ridge_p95 = float(metrics["ridge_center_absolute_offset_p95_px"])
         guardrail = bool(
-            metrics["global_ssim_to_accepted_generation"] >= minimum_ssim
-            and metrics["outside_writable_max_abs_change"] <= 0.5 / 65535.0
-            # The accepted generator renders the plate phase differently from
-            # the guide, so signed band-pass correlation can become slightly
-            # more negative even when measured ridge positions improve.  Keep
-            # it as a bounded appearance guard rather than the primary target.
-            and mid >= baseline_mid - 0.05
-            and ridge_median <= baseline_median
-            and ridge_p95 <= baseline_p95
+            identity_candidate
+            or (
+                metrics["global_ssim_to_accepted_generation"] >= minimum_ssim
+                and metrics["outside_writable_max_abs_change"] <= 0.5 / 65535.0
+                # The accepted generator renders the plate phase differently
+                # from the guide, so signed band-pass correlation can become
+                # slightly more negative even when measured ridge positions
+                # improve. Keep it as a bounded appearance guard rather than
+                # the primary target.
+                and mid >= baseline_mid - 0.05
+                and ridge_median <= baseline_median
+                and ridge_p95 <= baseline_p95
+            )
         )
         score = float(
             0.45 * mid
@@ -411,24 +455,29 @@ def choose_warp(
         }
         records.append(record)
         candidates.append((candidate, record))
-    eligible = [candidate for candidate in candidates if candidate[1]["guardrail_pass"]]
-    if not eligible:
-        compact = [
-            {
-                "strength": row["warp"]["strength"],
-                "ssim": row["alignment"]["global_ssim_to_accepted_generation"],
-                "mid": row["alignment"]["guide_mid_frequency_correlation"],
-                "ridge_median": row["alignment"]["ridge_center_absolute_offset_median_px"],
-                "ridge_p95": row["alignment"]["ridge_center_absolute_offset_p95_px"],
-            }
-            for row in records
-        ]
-        raise RuntimeError(
-            "No native-coordinate warp candidate passed all guardrails: "
-            + json.dumps(compact)
+    eligible_nonzero = [
+        candidate
+        for candidate in candidates
+        if candidate[1]["guardrail_pass"]
+        and candidate[1]["warp"]["strength"] != 0.0
+    ]
+    identity = candidates[0]
+    fallback_used = not eligible_nonzero
+    if eligible_nonzero:
+        selected, selected_record = max(
+            eligible_nonzero, key=lambda item: item[1]["selection_score"]
         )
-    selected, selected_record = max(eligible, key=lambda item: item[1]["selection_score"])
-    return selected, {"baseline": baseline, "selected": selected_record}, records
+    else:
+        selected, selected_record = identity
+    return selected, {
+        "baseline": baseline,
+        "selected": selected_record,
+        "identity_fallback_used": fallback_used,
+        "selection_policy": (
+            "highest-score guardrail-passing nonzero warp; exact identity only "
+            "when no nonzero warp passes"
+        ),
+    }, records
 
 
 def parse_strengths(text: str) -> list[float]:
@@ -459,7 +508,15 @@ def main() -> None:
         default=base.Roi(700, 1140, 985, 1205),
         help="y0,y1,x0,x1 region that must remain bit-identical to the generation",
     )
-    parser.add_argument("--strengths", type=parse_strengths, default=parse_strengths("0.12,0.16,0.20,0.24"))
+    parser.add_argument(
+        "--strengths",
+        type=parse_strengths,
+        default=parse_strengths("0.12,0.16,0.20,0.24"),
+        help=(
+            "comma-separated nonzero warp strengths in (0, 1]; an exact "
+            "strength-zero identity fallback is always evaluated"
+        ),
+    )
     parser.add_argument("--maximum-displacement", type=float, default=5.0)
     parser.add_argument("--maximum-vertical-displacement", type=float, default=5.0)
     parser.add_argument("--minimum-global-ssim", type=float, default=0.965)

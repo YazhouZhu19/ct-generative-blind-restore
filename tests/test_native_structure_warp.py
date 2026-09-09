@@ -5,6 +5,7 @@ from __future__ import annotations
 import sys
 import unittest
 from pathlib import Path
+from unittest import mock
 
 import numpy as np
 
@@ -86,6 +87,126 @@ class NativeStructureWarpTests(unittest.TestCase):
         self.assertFalse(metrics["canvas_resized"])
         self.assertFalse(metrics["guide_or_raw_pixel_writeback"])
         self.assertTrue(metrics["vertical_coordinate_changed"])
+
+    @staticmethod
+    def alignment_metrics(mid: float, median: float, p95: float) -> dict:
+        return {
+            "guide_mid_frequency_correlation": mid,
+            "ridge_center_absolute_offset_median_px": median,
+            "ridge_center_absolute_offset_p95_px": p95,
+            "global_ssim_to_accepted_generation": 1.0,
+            "outside_writable_max_abs_change": 0.0,
+        }
+
+    def test_choose_warp_uses_identity_when_every_warp_worsens_alignment(self) -> None:
+        generated = np.linspace(0.0, 1.0, 48, dtype=np.float32).reshape(6, 8)
+        baseline = self.alignment_metrics(mid=0.60, median=1.0, p95=2.0)
+        worse_first = self.alignment_metrics(mid=0.58, median=1.2, p95=2.3)
+        worse_second = self.alignment_metrics(mid=0.55, median=1.4, p95=2.6)
+
+        def fake_apply(*args, strength: float, **kwargs):
+            return np.full_like(generated, strength), {"strength": strength}
+
+        with (
+            mock.patch.object(warp, "apply_native_warp", side_effect=fake_apply) as apply,
+            mock.patch.object(
+                warp.audit,
+                "fast_alignment_metrics",
+                side_effect=(baseline, worse_first, worse_second),
+            ),
+        ):
+            selected, selection, records = warp.choose_warp(
+                [0.20, 0.40],
+                generated,
+                generated,
+                [],
+                {},
+                {},
+                minimum_ssim=0.965,
+                maximum_displacement=5.0,
+                maximum_vertical_displacement=5.0,
+            )
+
+        self.assertTrue(np.array_equal(selected, generated))
+        self.assertEqual(selection["selected"]["warp"]["strength"], 0.0)
+        self.assertTrue(selection["selected"]["warp"]["identity_no_op"])
+        self.assertEqual([row["warp"]["strength"] for row in records], [0.0, 0.20, 0.40])
+        self.assertTrue(records[0]["guardrail_pass"])
+        self.assertFalse(records[1]["guardrail_pass"])
+        self.assertFalse(records[2]["guardrail_pass"])
+        self.assertEqual(apply.call_count, 2)
+
+    def test_choose_warp_keeps_better_nonzero_candidate(self) -> None:
+        generated = np.full((6, 8), 0.25, dtype=np.float32)
+        baseline = self.alignment_metrics(mid=0.40, median=2.0, p95=4.0)
+        improved = self.alignment_metrics(mid=0.48, median=0.8, p95=1.5)
+
+        def fake_apply(*args, strength: float, **kwargs):
+            return np.full_like(generated, 0.75), {"strength": strength}
+
+        with (
+            mock.patch.object(warp, "apply_native_warp", side_effect=fake_apply),
+            mock.patch.object(
+                warp.audit,
+                "fast_alignment_metrics",
+                side_effect=(baseline, improved),
+            ),
+        ):
+            selected, selection, records = warp.choose_warp(
+                [0.20],
+                generated,
+                generated,
+                [],
+                {},
+                {},
+                minimum_ssim=0.965,
+                maximum_displacement=5.0,
+                maximum_vertical_displacement=5.0,
+            )
+
+        expected = warp.base.to_uint16(np.full_like(generated, 0.75)).astype(
+            np.float32
+        ) / 65535.0
+        self.assertTrue(np.array_equal(selected, expected))
+        self.assertEqual(selection["selected"]["warp"]["strength"], 0.20)
+        self.assertGreater(
+            records[1]["selection_score"], records[0]["selection_score"]
+        )
+
+    def test_choose_warp_preserves_guardrail_passing_historical_selection(self) -> None:
+        generated = np.full((6, 8), 0.25, dtype=np.float32)
+        baseline = self.alignment_metrics(mid=0.60, median=2.0, p95=4.0)
+        # Ridge alignment improves and the established mid-frequency tolerance
+        # passes, although the weighted score is slightly below the identity.
+        historical = self.alignment_metrics(mid=0.56, median=1.95, p95=3.95)
+
+        def fake_apply(*args, strength: float, **kwargs):
+            return np.full_like(generated, 0.75), {"strength": strength}
+
+        with (
+            mock.patch.object(warp, "apply_native_warp", side_effect=fake_apply),
+            mock.patch.object(
+                warp.audit,
+                "fast_alignment_metrics",
+                side_effect=(baseline, historical),
+            ),
+        ):
+            selected, selection, records = warp.choose_warp(
+                [0.16],
+                generated,
+                generated,
+                [],
+                {},
+                {},
+                minimum_ssim=0.965,
+                maximum_displacement=5.0,
+                maximum_vertical_displacement=5.0,
+            )
+
+        self.assertFalse(selection["identity_fallback_used"])
+        self.assertEqual(selection["selected"]["warp"]["strength"], 0.16)
+        self.assertLess(records[1]["selection_score"], records[0]["selection_score"])
+        self.assertFalse(np.array_equal(selected, generated))
 
 
 if __name__ == "__main__":

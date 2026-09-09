@@ -33,6 +33,9 @@ Key invariants:
   intensities are never copied into the final image.
 - The selected warp is searched over conservative strengths and must pass SSIM,
   writable-mask, ridge-median, and ridge-P95 guardrails.
+- If every nonzero warp would worsen an already aligned candidate, the selector
+  records and returns an exact strength-zero identity result instead of forcing
+  a harmful displacement.
 - The bundled reference run selected strength `0.16`, corresponding to about
   `0.8 px` maximum applied displacement in either axis.
 

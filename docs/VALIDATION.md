@@ -32,7 +32,8 @@ The run is valid only when:
 - final dimensions equal the source dimensions;
 - the structure stage reports zero change outside the writable mask;
 - central-block maximum change is at most half a 16-bit code value;
-- a selected candidate passed all guardrails;
+- a nonzero candidate passed all guardrails, or the audited exact identity
+  fallback was selected because no nonzero warp did;
 - PNG and TIFF hashes are present.
 
 ## Golden-sample reproduction
